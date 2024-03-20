@@ -1,0 +1,3 @@
+- Call class-scope fixtures while recreating class
+- Add tests
+- Add documentation

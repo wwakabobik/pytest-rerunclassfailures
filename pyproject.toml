@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pytest-rerunclassfailures"
+version = "0.0.1"
+keywords = ["pytest", "pytest-rerunclassfailures", "pytest-plugin", "testing"]
+authors = [
+  { name="Iliya Vereshchagin", email="i.vereshchagin@gmail.com" },
+]
+maintainers = [
+  { name="Iliya Vereshchagin", email="i.vereshchagin@gmail.com" },
+]
+description = "pytest rerun class failures plugin"
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.8"
+dependencies = [
+    'pydantic',
+    'pytest'
+]
+classifiers = [
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+install_requires = [
+    'pytest',
+    'pydantic'
+]
+
+[project.urls]
+"Homepage" = "https://github.com/wwakabobik/pytest-rerunclassfailures"
+"Bug Tracker" = "https://github.com/wwakabobik/pytest-rerunclassfailures/issues"
+
+
+[tool.black]
+line-length = 120
+
+[tool.flake8]
+max-line-length = 120
+max-name-length = 60
+max-module-members = 15
+extend-ignore = """
+    Q000,
+    WPS306,
+    I001,
+    I005,
+    WPS229,
+    D400,
+    WPS317,
+    S101,
+    WPS507,
+    DAR101,
+    DAR201,
+    WPS112,
+    F401,
+    WPS300,
+    WPS412,
+    DAR301,
+    D401,
+    D205,
+    WPS615,
+    I004,
+    WPS110,
+    WPS420,
+    C812,
+    WPS404,
+    WPS221,
+    WPS305,
+    WPS323,
+    WPS204,
+    WPS226,
+    WPS220,
+    WPS214,
+    WPS217,
+    WPS210,
+    WPS111,
+    WPS213,
+    WPS211,
+    WPS231,
+    S311,
+"""
+
+[tool.pylint]
+max-line-length = 120
