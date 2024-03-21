@@ -3,7 +3,7 @@
 import logging
 from copy import deepcopy
 from time import sleep
-from typing import Optional
+from typing import Tuple
 
 import _pytest.nodes
 import pytest
@@ -55,17 +55,19 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         self.only_last = config.getoption("--rerun-show-only-last")  # rerun only the last failed test
         self.logger = logging.getLogger("pytest")
 
-    def _report_run(self, item: _pytest.nodes.Item, cls_name: str) -> None:
+    def _report_run(self, item: _pytest.nodes.Item, parent_name: str) -> None:
         """
         Report the class test run.
 
         :param item: pytest item
         :type item: _pytest.nodes.Item
+        :param parent_name: parent class name
+        :type parent_name: str
         """
-        if cls_name in self.rerun_classes:
-            if item.nodeid in self.rerun_classes[cls_name]:
+        if parent_name in self.rerun_classes:
+            if item.nodeid in self.rerun_classes[parent_name]:
                 item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
-                for rerun in self.rerun_classes[cls_name][item.nodeid]:
+                for rerun in self.rerun_classes[parent_name][item.nodeid]:
                     for report in rerun:
                         item.ihook.pytest_runtest_logreport(report=report)
                 item.ihook.pytest_runtest_logfinish(nodeid=item.nodeid, location=item.location)
@@ -83,14 +85,17 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         if item.cls is None or self.rerun_max == 0:  # type: ignore
             return False  # ignore non-class items or plugin disabled
 
-        cls = item.getparent(pytest.Class)
-        cls_name = cls.name  # type: ignore
-        initial_state = self._save_parent_initial_state(cls)
+        parent_class = item.getparent(pytest.Class)
 
-        if cls_name not in self.rerun_classes:
-            self.rerun_classes[cls_name] = {}  # to store class run results
+        if not parent_class:  # this check needs to be done separately to not raise mypy warnings (false-positive)
+            return False
+
+        initial_state = self._save_parent_initial_state(parent_class)
+
+        if parent_class.name not in self.rerun_classes:
+            self.rerun_classes[parent_class.name] = {}  # to store class run results
         else:
-            self._report_run(item, cls_name)  # report the rest of the results we already made in scheduled time
+            self._report_run(item, parent_class.name)  # report the rest of the results we already made the right time
             return False
 
         siblings = self._collect_sibling_items(item)
@@ -105,13 +110,13 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                 siblings[i].reports = runtestprotocol(siblings[i], nextitem=nextitem, log=False)
 
                 # Create a new list of reports for each rerun, if needed
-                if siblings[i].nodeid not in self.rerun_classes[cls_name]:
-                    self.rerun_classes[cls_name][siblings[i].nodeid] = []
-                if rerun_count not in self.rerun_classes[cls_name][siblings[i].nodeid]:
-                    self.rerun_classes[cls_name][siblings[i].nodeid].append([])
+                if siblings[i].nodeid not in self.rerun_classes[parent_class.name]:
+                    self.rerun_classes[parent_class.name][siblings[i].nodeid] = []
+                if rerun_count not in self.rerun_classes[parent_class.name][siblings[i].nodeid]:
+                    self.rerun_classes[parent_class.name][siblings[i].nodeid].append([])
 
                 for report in siblings[i].reports:
-                    self.rerun_classes[cls_name][siblings[i].nodeid][rerun_count].append(report)
+                    self.rerun_classes[parent_class.name][siblings[i].nodeid][rerun_count].append(report)
                     if report.failed and not hasattr(report, "wasxfail"):
                         passed = False
 
@@ -120,26 +125,32 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                     break  # fail fast
 
             if not passed and rerun_count < self.rerun_max:
-                item, cls, siblings = self._teardown_rerun(item, cls, siblings, initial_state)
-                self.logger.info("Rerunning %s - %s time(s) after %s seconds", cls_name, rerun_count, self.delay)
+                item, parent_class, siblings = self._teardown_rerun(item, parent_class, siblings, initial_state)
+                self.logger.info(
+                    "Rerunning %s - %s time(s) after %s seconds", parent_class.name, rerun_count, self.delay
+                )
                 sleep(self.delay)
 
-        self._process_reports(cls_name)
-        self._report_run(item, cls_name)
+        self._process_reports(parent_class.name)
+        self._report_run(item, parent_class.name)
         item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
         return True
 
     def _teardown_rerun(
-        self, item: _pytest.nodes.Item, cls: Optional[pytest.Class], siblings: list, initial_state: dict
-    ) -> tuple:
+        self, item: _pytest.nodes.Item, parent_class: pytest.Class, siblings: list, initial_state: dict
+    ) -> Tuple[_pytest.nodes.Item, pytest.Class, list]:
         """
         Teardown rerun
 
-        :param item:
-        :param cls:
-        :param siblings:
-        :param initial_state:
-        :return:
+        :param item: test item under test
+        :type item: _pytest.nodes.Item
+        :param parent_class: parent class
+        :type parent_class: pytest.Class
+        :param siblings: siblings of the parent class
+        :type siblings: list
+        :param initial_state: initial attributes of class
+        :type initial_state: dict
+        :return: tuple
         """
         # Drop failed fixtures and cache
         self._remove_cached_results_from_failed_fixtures(item)
@@ -148,9 +159,9 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         # Teardown the class and emulate recreation of it
         item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
         # We can't replace the class because session-scoped fixtures will be lost
-        cls, siblings = self._recreate_test_class(cls, siblings, initial_state)
-        item.parent = cls  # ensure that we're using updated class
-        return item, cls, siblings
+        parent_class, siblings = self._recreate_test_class(parent_class, siblings, initial_state)
+        item.parent = parent_class  # ensure that we're using updated class
+        return item, parent_class, siblings
 
     @staticmethod
     def _collect_sibling_items(item: _pytest.nodes.Item) -> list:
@@ -199,7 +210,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                     self.logger.debug("While saving state of parent class: can't deepcopy %s: %s", attr_name, error)
         return attrs
 
-    def _set_parent_initial_state(self, parent: Optional[pytest.Class], state: dict) -> pytest.Class:
+    def _set_parent_initial_state(self, parent: pytest.Class, state: dict) -> pytest.Class:
         """
         Set the parent initial state.
 
@@ -217,43 +228,43 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                 self.logger.debug("While loading state of parent class: can't deepcopy %s: %s", attr_name, error)
         return parent
 
-    def _recreate_test_class(self, cls: Optional[pytest.Class], siblings: list, initial_state: dict) -> tuple:
+    def _recreate_test_class(self, test_class: pytest.Class, siblings: list, initial_state: dict) -> tuple:
         """
         Recreate the test class.
 
-        :param cls: pytest class
-        :type cls: pytest.Class
+        :param test_class: pytest class
+        :type test_class: pytest.Class
         :param siblings: list of siblings
         :type siblings: list
         :param initial_state: parent initial state
         :type initial_state: dict
-        :return: cls and siblings
+        :return: test_class and siblings
         :rtype: tuple
         """
         # Drop a previous failed flag only when we are going to rerun the test
-        if hasattr(cls, "_previousfailed"):
-            delattr(cls, "_previousfailed")
+        if hasattr(test_class, "_previousfailed"):
+            delattr(test_class, "_previousfailed")
 
         # Load the original test class from the pytest Class object and propagate to the siblings
-        self._set_parent_initial_state(cls, initial_state)
+        self._set_parent_initial_state(test_class, initial_state)
         for i in range(len(siblings) - 1):
-            siblings[i].parent = cls
+            siblings[i].parent = test_class
 
-        return cls, siblings
+        return test_class, siblings
 
-    def _process_reports(self, cls_name) -> None:
+    def _process_reports(self, class_name) -> None:
         """
         Process the reports.
 
-        :param cls_name: class name
-        :type cls_name: str
+        :param class_name: class name
+        :type class_name: str
         :return: None
         :rtype: None
         """
-        for sibling, reruns in self.rerun_classes[cls_name].items():
+        for sibling, reruns in self.rerun_classes[class_name].items():
             if len(reruns) > 1:
                 if self.only_last:
-                    self.rerun_classes[cls_name][sibling] = [reruns[-1]]
+                    self.rerun_classes[class_name][sibling] = [reruns[-1]]
                 else:
                     for rerun in reruns[:-1]:
                         for report in rerun:
