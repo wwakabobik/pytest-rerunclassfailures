@@ -19,7 +19,7 @@ def run_tests_with_plugin(request):
     :rtype: function
     """
 
-    def run(test_path: str, args: list[str]) -> tuple:
+    def run(test_path: str, args: list) -> tuple:
         """
         Run pytest with the plugin and arguments.
 
