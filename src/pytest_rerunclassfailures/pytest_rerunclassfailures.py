@@ -199,7 +199,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                     self.logger.debug("While saving state of parent class: can't deepcopy %s: %s", attr_name, error)
         return attrs
 
-    def _set_parent_initial_state(self, parent: pytest.Class, state: dict) -> pytest.Class:
+    def _set_parent_initial_state(self, parent: Optional[pytest.Class], state: dict) -> pytest.Class:
         """
         Set the parent initial state.
 
