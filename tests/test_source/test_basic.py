@@ -1,12 +1,17 @@
-import pytest
+"""This is a basic test"""
 
 
 class TestBasic:
+    """This is a basic test"""
+
     def test_basic(self):
-        assert 1 == 1
+        """This is basic test 1"""
+        assert True
 
     def test_basic2(self):
-        assert 1 == 2
+        """This is basic test 2"""
+        assert False
 
     def test_basic3(self):
-        assert 1 == 1
+        """This is basic test 3"""
+        assert True
