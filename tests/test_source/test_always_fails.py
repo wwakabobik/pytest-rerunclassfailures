@@ -1,7 +1,7 @@
 """This class always fail"""
 
 
-class TestAlwaysFail:
+class TestAlwaysFail:  # pylint: disable=too-few-public-methods
     """This class always fails"""
 
     def test_always_fail(self):
