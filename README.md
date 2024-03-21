@@ -10,7 +10,7 @@ Instead of that, all tests from the class will be rerun starting first one.
 The plugin supports proper class teardown and reset attribute of the class to initial values. 
 So it will be reset before each rerun.
 
-![pytest-rerunclassfailures](https://raw.githubusercontent.com/wwakabobik/pytest-rerunclassfailures/master/src/assets/pytest-rerunclassfailures.jpg)
+![pytest-rerunclassfailures](https://raw.githubusercontent.com/wwakabobik/pytest-rerunclassfailures/master/assets/pytest-rerunclassfailures.jpg)
 
 ## Installation
 TBD (not published yet)
