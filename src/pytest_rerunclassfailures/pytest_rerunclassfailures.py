@@ -49,7 +49,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :param config: pytest config
         :type config: _pytest.config.Config
         """
-        self.rerun_classes = {}  # test classed already rerun
+        self.rerun_classes: dict = {}  # test classed already rerun
         self.rerun_max = config.getoption("--rerun-class-max")  # how many times to rerun the class
         self.rerun_max = self.rerun_max + 1 if self.rerun_max > 0 else 0  # increment by 1 to include the initial run
         self.delay = config.getoption("--rerun-delay")  # delay between reruns in seconds
@@ -85,7 +85,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
             return False  # ignore non-class items or plugin disabled
 
         cls = item.getparent(pytest.Class)
-        cls_name = cls.name
+        cls_name = cls.name  # type: ignore
         initial_state = self._save_parent_initial_state(cls)
 
         if cls_name not in self.rerun_classes:
@@ -218,7 +218,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                 self.logger.debug("While loading state of parent class: can't deepcopy %s: %s", attr_name, error)
         return parent
 
-    def _recreate_test_class(self, cls: pytest.Class, siblings: list, initial_state: dict) -> tuple:
+    def _recreate_test_class(self, cls: Optional[pytest.Class], siblings: list, initial_state: dict) -> tuple:
         """
         Recreate the test class.
 
