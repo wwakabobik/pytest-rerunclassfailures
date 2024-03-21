@@ -1,6 +1,5 @@
 """Rerun failed tests in a class to eliminate flaky failures."""
 
-
 import logging
 from copy import deepcopy
 from time import sleep
