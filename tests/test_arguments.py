@@ -9,7 +9,7 @@ import pytest
 
 
 @pytest.fixture
-def run_tests_with_plugin(request):
+def run_tests_with_plugin(request):  # pylint: disable=unused-argument
     """
     Fixture to run pytest with the plugin.
 
@@ -30,6 +30,7 @@ def run_tests_with_plugin(request):
         :return: tuple with the return code and the output
         :rtype: tuple
         """
+        print(f"Running pytest with the plugin and arguments: {args}")
         return_code = 0
         try:
             env = environ.copy()
