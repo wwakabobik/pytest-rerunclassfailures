@@ -1,8 +1,10 @@
 """Rerun failed tests in a class to eliminate flaky failures."""
 
+
 import logging
 from copy import deepcopy
 from time import sleep
+from typing import Optional
 
 import _pytest.nodes
 import pytest
@@ -129,8 +131,17 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         return True
 
     def _teardown_rerun(
-        self, item: _pytest.nodes.Item, cls: pytest.Class, siblings: list, initial_state: dict
+        self, item: _pytest.nodes.Item, cls: Optional[pytest.Class], siblings: list, initial_state: dict
     ) -> tuple:
+        """
+        Teardown rerun
+
+        :param item:
+        :param cls:
+        :param siblings:
+        :param initial_state:
+        :return:
+        """
         # Drop failed fixtures and cache
         self._remove_cached_results_from_failed_fixtures(item)
         # Clean class setup state stack
@@ -140,8 +151,6 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         # We can't replace the class because session-scoped fixtures will be lost
         cls, siblings = self._recreate_test_class(cls, siblings, initial_state)
         item.parent = cls  # ensure that we're using updated class
-        # Force class setup like "first item"
-        item.session._setupstate.setup(cls)  # pylint: disable=protected-access
         return item, cls, siblings
 
     @staticmethod
@@ -160,7 +169,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         for i in items[items.index(item) + 1 :]:
             if item.cls == i.cls:  # type: ignore
                 siblings.append(i)
-        siblings.append(None)
+        siblings.append(None)  # type: ignore
 
         return siblings
 
@@ -260,13 +269,14 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         """
         cached_result = "cached_result"
         fixture_info = getattr(item, "_fixtureinfo", None)
-        for fixture_def_str in getattr(fixture_info, "name2fixturedefs", ()):
-            fixture_defs = fixture_info.name2fixturedefs[fixture_def_str]
-            for fixture_def in fixture_defs:
-                if getattr(fixture_def, cached_result, None) is not None:
-                    result, _, err = getattr(fixture_def, cached_result)
-                    if err:  # Deleting cached results for only failed fixtures
-                        setattr(fixture_def, result, None)
+        if fixture_info:
+            for fixture_def_str in getattr(fixture_info, "name2fixturedefs", ()):
+                fixture_defs = fixture_info.name2fixturedefs[fixture_def_str]
+                for fixture_def in fixture_defs:
+                    if getattr(fixture_def, cached_result, None) is not None:
+                        result, _, err = getattr(fixture_def, cached_result)
+                        if err:  # Deleting cached results for only failed fixtures
+                            setattr(fixture_def, result, None)
 
 
 def pytest_configure(config):
