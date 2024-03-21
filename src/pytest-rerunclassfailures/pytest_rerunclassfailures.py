@@ -1,8 +1,10 @@
 """Rerun failed tests in a class to eliminate flaky failures."""
 
+import logging
 from copy import deepcopy
 from time import sleep
 
+import _pytest.nodes
 import pytest
 from _pytest.runner import runtestprotocol
 
@@ -28,45 +30,47 @@ def pytest_addoption(parser):
     )
     group.addoption(
         "--rerun-show-only-last",
-        action="store",
+        action="store_true",
         dest="rerun_show_only_last",
-        type=bool,
         default=False,
         help="show only the last rerun if True, otherwise show all tries",
     )
 
 
-class RerunClassPlugin:
+class RerunClassPlugin:  # pylint: disable=too-few-public-methods
     """Re-run failed tests in a class."""
 
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         """
         Initialize RerunClassPlugin class.
 
         :param config: pytest config
         :type config: _pytest.config.Config
         """
-        self.rerun_classes = []  # test classed already rerun
+        self.rerun_classes = {}  # test classed already rerun
         self.rerun_max = config.getoption("--rerun-class-max")  # how many times to rerun the class
         self.rerun_max = self.rerun_max + 1 if self.rerun_max > 0 else 0  # increment by 1 to include the initial run
         self.delay = config.getoption("--rerun-delay")  # delay between reruns in seconds
         self.only_last = config.getoption("--rerun-show-only-last")  # rerun only the last failed test
+        self.logger = logging.getLogger("pytest")
 
-    def _report_run(self, item):
+    def _report_run(self, item: _pytest.nodes.Item, cls_name: str) -> None:
         """
         Report the class test run.
 
         :param item: pytest item
         :type item: _pytest.nodes.Item
         """
-        if item.reports:
-            item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
-            for report in item.reports:
-                item.ihook.pytest_runtest_logreport(report=report)
-            item.ihook.pytest_runtest_logfinish(nodeid=item.nodeid, location=item.location)
+        if cls_name in self.rerun_classes:
+            if item.nodeid in self.rerun_classes[cls_name]:
+                item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
+                for rerun in self.rerun_classes[cls_name][item.nodeid]:
+                    for report in rerun:
+                        item.ihook.pytest_runtest_logreport(report=report)
+                item.ihook.pytest_runtest_logfinish(nodeid=item.nodeid, location=item.location)
 
     @pytest.hookimpl(tryfirst=True)
-    def pytest_runtest_protocol(self, item, nextitem):
+    def pytest_runtest_protocol(self, item: _pytest.nodes.Item, nextitem: _pytest.nodes.Item):  # pylint: disable=W0613
         """
         Run the test protocol.
 
@@ -75,86 +79,97 @@ class RerunClassPlugin:
         :param nextitem: next pytest item
         :type nextitem: _pytest.nodes.Item
         """
-        if item.cls is None or self.rerun_max == 0:  # ignore non-class items or plugin disabled
-            return False
-
-        if getattr(item, "reports", None) is not None:  # report if called with reports entity should be ignored
-            item.reports = None
-            return True
+        if item.cls is None or self.rerun_max == 0:  # type: ignore
+            return False  # ignore non-class items or plugin disabled
 
         cls = item.getparent(pytest.Class)
         cls_name = cls.name
+        initial_state = self._save_parent_initial_state(cls)
 
-        if cls_name not in self.rerun_classes:  # ignore if class already passed
-            self.rerun_classes.append(cls_name)
+        if cls_name not in self.rerun_classes:
+            self.rerun_classes[cls_name] = {}  # to store class run results
         else:
+            self._report_run(item, cls_name)  # report the rest of the results we already made in scheduled time
             return False
 
-        siblings = [item]
-        items = item.session.items
-        index = items.index(item)
+        siblings = self._collect_sibling_items(item)
 
-        for i in items[index + 1 :]:
-            siblings.append(i)
-            if item.cls != i.cls:
-                break
-        if siblings[-1].cls == item.cls:
-            siblings.append(None)
-
-        reports = []
-        all_passed = False
         rerun_count = 0
-        initial_state = self._save_parent_initial_state(cls)
-        while not all_passed and rerun_count < self.rerun_max:
-            reports.append([])
-            all_passed = True
+        passed = False
+        while not passed and rerun_count < self.rerun_max:
+            passed = True
             for i in range(len(siblings) - 1):
+                # Before run, we need to ensure that finalizers are not called (indicated by None in the stack)
                 nextitem = siblings[i + 1] if siblings[i + 1] is not None else siblings[0]
                 siblings[i].reports = runtestprotocol(siblings[i], nextitem=nextitem, log=False)
 
-                for report in siblings[i].reports:
-                    if report.failed and not hasattr(report, "wasxfail") and report.when == "call":
-                        if rerun_count < self.rerun_max - 1:
-                            report.outcome = "rerun"
-                        else:
-                            report.outcome = "failed"
-                        all_passed = False
-                    else:
-                        if report.failed and report.when == "setup":
-                            print(f"Something really bad happened: {report.longrepr}")
-                            return False
-                    reports[rerun_count].append(report)
-                    if not all_passed:
-                        break  # fail fast
+                # Create a new list of reports for each rerun, if needed
+                if siblings[i].nodeid not in self.rerun_classes[cls_name]:
+                    self.rerun_classes[cls_name][siblings[i].nodeid] = []
+                if rerun_count not in self.rerun_classes[cls_name][siblings[i].nodeid]:
+                    self.rerun_classes[cls_name][siblings[i].nodeid].append([])
 
-                if not all_passed:
+                for report in siblings[i].reports:
+                    self.rerun_classes[cls_name][siblings[i].nodeid][rerun_count].append(report)
+                    if report.failed and not hasattr(report, "wasxfail"):
+                        passed = False
+
+                if not passed:
                     rerun_count += 1
                     break  # fail fast
 
-            if not all_passed and rerun_count < self.rerun_max:
-                # Drop failed fixtures and cache
-                self._remove_cached_results_from_failed_fixtures(item)
-                item.session._setupstate.stack = {}  # pylint: disable=protected-access
-                # Teardown the class and emulate recreation of it
-                item.session._setupstate.teardown_exact(None)
-                # We can't replace the class because session-scoped fixtures will be lost
-                cls, siblings = self._recreate_test_class(cls, siblings, initial_state)
-                item.parent = cls  # ensure that we're using updated class
-                item.session._setupstate.setup(cls)  # force class setup like "first item"
-                print(f"Rerunning {cls_name} - {rerun_count} time(s) after {self.delay} seconds")
+            if not passed and rerun_count < self.rerun_max:
+                item, cls, siblings = self._teardown_rerun(item, cls, siblings, initial_state)
+                self.logger.info("Rerunning %s - %s time(s) after %s seconds", cls_name, rerun_count, self.delay)
                 sleep(self.delay)
 
-        item.reports = self._process_reports(reports)
-        self._report_run(item)  # report all the runs
-        item.session._setupstate.teardown_exact(None)  # force class teardown like "last item"
+        self._process_reports(cls_name)
+        self._report_run(item, cls_name)
+        item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
         return True
+
+    def _teardown_rerun(
+        self, item: _pytest.nodes.Item, cls: pytest.Class, siblings: list, initial_state: dict
+    ) -> tuple:
+        # Drop failed fixtures and cache
+        self._remove_cached_results_from_failed_fixtures(item)
+        # Clean class setup state stack
+        item.session._setupstate.stack = {}  # pylint: disable=protected-access
+        # Teardown the class and emulate recreation of it
+        item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
+        # We can't replace the class because session-scoped fixtures will be lost
+        cls, siblings = self._recreate_test_class(cls, siblings, initial_state)
+        item.parent = cls  # ensure that we're using updated class
+        # Force class setup like "first item"
+        item.session._setupstate.setup(cls)  # pylint: disable=protected-access
+        return item, cls, siblings
+
+    @staticmethod
+    def _collect_sibling_items(item: _pytest.nodes.Item) -> list:
+        """
+        Collect sibling items.
+
+        :param item: current pytest item
+        :type item: _pytest.nodes.Item
+        :return: sibling items
+        :rtype: list
+        """
+        siblings = [item]
+        items = item.session.items
+
+        for i in items[items.index(item) + 1 :]:
+            if item.cls == i.cls:  # type: ignore
+                siblings.append(i)
+        siblings.append(None)
+
+        return siblings
 
     def _save_parent_initial_state(self, parent):
         """
         Save the parent initial state.
 
-        :param item: pytest item
-        :type item: _pytest.nodes.Item
+        :param parent: pytest item
+        :type parent: _pytest.
         :return: parent initial state
         :rtype: dict
         """
@@ -168,20 +183,30 @@ class RerunClassPlugin:
                 and attr_name != "pytestmark"
             ):
                 attr_value = getattr(obj, attr_name)
-                attrs[attr_name] = deepcopy(attr_value)
+                try:
+                    attrs[attr_name] = deepcopy(attr_value)
+                except Exception as error:  # pylint: disable=broad-except
+                    # sometimes we can't deepcopy, in this case, store the value
+                    attrs[attr_name] = attr_value  # sometimes we can't deepcopy, in this case, create a link
+                    self.logger.debug("While saving state of parent class: can't deepcopy %s: %s", attr_name, error)
         return attrs
 
-    def _set_parent_initial_state(self, parent, state):
+    def _set_parent_initial_state(self, parent: pytest.Class, state: dict) -> pytest.Class:
         """
         Set the parent initial state.
 
-        :param item: pytest item
-        :type item: _pytest.nodes.Item
+        :param parent: pytest class
+        :type parent: pytest.Class
         :param state: parent initial state
         :type state: dict
         """
         for attr_name, attr_value in state.items():
-            setattr(parent.obj, attr_name, deepcopy(attr_value))
+            try:
+                setattr(parent.obj, attr_name, deepcopy(attr_value))
+            except Exception as error:  # pylint: disable=broad-except
+                # sometimes we can't deepcopy, in this case, store the value
+                setattr(parent.obj, attr_name, attr_value)
+                self.logger.debug("While loading state of parent class: can't deepcopy %s: %s", attr_name, error)
         return parent
 
     def _recreate_test_class(self, cls: pytest.Class, siblings: list, initial_state: dict) -> tuple:
@@ -206,31 +231,27 @@ class RerunClassPlugin:
         for i in range(len(siblings) - 1):
             siblings[i].parent = cls
 
-        # TODO: Call class-scoped fixtures
-
         return cls, siblings
 
-    def _process_reports(self, rerun_reports: list) -> list:
+    def _process_reports(self, cls_name) -> None:
         """
         Process the reports.
 
-        :param rerun_reports: list of rerun reports
-        :type rerun_reports: list
-        :return: item reports
-        :rtype: list
+        :param cls_name: class name
+        :type cls_name: str
+        :return: None
+        :rtype: None
         """
-        new_reports = []
-        if not self.only_last:
-            if len(rerun_reports) > 1:
-                for reports in rerun_reports[:-1]:
-                    for report in reports:
-                        if report.when == "call":
+        for sibling, reruns in self.rerun_classes[cls_name].items():
+            if len(reruns) > 1:
+                if self.only_last:
+                    self.rerun_classes[cls_name][sibling] = [reruns[-1]]
+                else:
+                    for rerun in reruns[:-1]:
+                        for report in rerun:
                             report.outcome = "rerun"
-                    new_reports += reports
-        new_reports += rerun_reports[-1]
-        return new_reports
 
-    def _remove_cached_results_from_failed_fixtures(self, item):
+    def _remove_cached_results_from_failed_fixtures(self, item: _pytest.nodes.Item) -> None:
         """
         Remove all cached_result attributes from every fixture.
 
@@ -245,7 +266,7 @@ class RerunClassPlugin:
                 if getattr(fixture_def, cached_result, None) is not None:
                     result, _, err = getattr(fixture_def, cached_result)
                     if err:  # Deleting cached results for only failed fixtures
-                        setattr(fixture_def, cached_result, None)
+                        setattr(fixture_def, result, None)
 
 
 def pytest_configure(config):
