@@ -30,7 +30,6 @@ jobs:
         pip install mypy
         pip install wemake-python-styleguide
         pip install black
-        pip install pytest==8.1.1
     - name: Analysing the code with pylint
       id: pylint
       continue-on-error: true
