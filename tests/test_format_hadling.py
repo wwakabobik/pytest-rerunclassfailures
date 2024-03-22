@@ -60,6 +60,7 @@ def test_format_handling_class_with_no_class(run_default_tests):  # pylint: disa
     assert output.count("RERUN") == 2
     assert " 2 failed, 2 passed, 2 rerun in " in output
 
+
 def test_format_handling_same_test_in_class(run_default_tests):  # pylint: disable=W0613
     """
     This test check test with the same test name in the class will be rerun correctly
