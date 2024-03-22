@@ -1,4 +1,4 @@
-"""Rerun failed tests in a class to eliminate flaky failures."""
+"""Rerun failed tests in a class to eliminate flaky failures"""
 
 import logging
 from copy import deepcopy
@@ -39,7 +39,7 @@ def pytest_addoption(parser):
 
 
 class RerunClassPlugin:  # pylint: disable=too-few-public-methods
-    """Re-run failed tests in a class."""
+    """Re-run failed tests in a class"""
 
     def __init__(self, config) -> None:
         """
