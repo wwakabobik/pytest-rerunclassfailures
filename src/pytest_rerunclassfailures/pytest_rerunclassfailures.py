@@ -81,15 +81,12 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :param nextitem: next pytest item
         :type nextitem: _pytest.nodes.Item
         """
-        if item.cls is None or self.rerun_max == 0:  # type: ignore
-            pytest_runtest_protocol(item, nextitem=nextitem)
-            return False  # ignore non-class items or plugin disabled
-
         parent_class = item.getparent(pytest.Class)
         module = item.nodeid.split("::")[0]
 
-        if not parent_class:  # this check needs to be done separately to not raise mypy warnings (false-positive)
-            return False
+        if item.cls is None or self.rerun_max == 0 or not parent_class:  # type: ignore
+            pytest_runtest_protocol(item, nextitem=nextitem)
+            return False  # ignore non-class items or plugin disabled
 
         if module not in self.rerun_classes:
             self.rerun_classes[module] = {}
@@ -111,9 +108,6 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                 nextitem = siblings[i + 1] if siblings[i + 1] is not None else siblings[0]
                 siblings[i].reports = runtestprotocol(siblings[i], nextitem=nextitem, log=False)
 
-                # Create a new list of reports for each rerun, if needed
-                # if siblings[i].nodeid not in self.rerun_classes[module]:
-                #    self.rerun_classes[module][siblings[i].nodeid] = {}
                 if siblings[i].nodeid not in self.rerun_classes[module][parent_class.name]:
                     self.rerun_classes[module][parent_class.name][siblings[i].nodeid] = []
                 if rerun_count not in self.rerun_classes[module][parent_class.name][siblings[i].nodeid]:
@@ -131,7 +125,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
             if not passed and rerun_count < self.rerun_max:
                 item, parent_class, siblings = self._teardown_rerun(item, parent_class, siblings, initial_state)
                 self.logger.info(
-                    "Rerunning %::%s - %s time(s) after %s seconds", module, parent_class.name, rerun_count, self.delay
+                    "Rerunning %s::%s - %s time(s) after %s seconds", module, parent_class.name, rerun_count, self.delay
                 )
                 sleep(self.delay)
 
