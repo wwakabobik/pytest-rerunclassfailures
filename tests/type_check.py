@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
     class FixtureRequest:  # pylint: disable=too-few-public-methods
         """Fixture request object typing stub"""
+
         param: str
 
 else:
