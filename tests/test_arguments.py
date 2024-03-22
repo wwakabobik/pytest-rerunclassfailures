@@ -7,9 +7,11 @@ from subprocess import check_output, STDOUT, CalledProcessError
 
 import pytest
 
+from .type_check import FixtureRequest
+
 
 @pytest.fixture
-def run_tests_with_plugin(request):  # pylint: disable=unused-argument
+def run_tests_with_plugin(request: FixtureRequest):  # pylint: disable=unused-argument
     """
     Fixture to run pytest with the plugin.
 
@@ -30,7 +32,6 @@ def run_tests_with_plugin(request):  # pylint: disable=unused-argument
         :return: tuple with the return code and the output
         :rtype: tuple
         """
-        print(f"Running pytest with the plugin and arguments: {args}")
         return_code = 0
         try:
             env = environ.copy()
@@ -51,7 +52,7 @@ def run_tests_with_plugin(request):  # pylint: disable=unused-argument
 
 
 @pytest.fixture(params=[[], ["--rerun-class-max=0"]], ids=["no_arguments", "zero reruns"])
-def plugin_disabled(request, run_tests_with_plugin) -> tuple:  # pylint: disable=redefined-outer-name
+def plugin_disabled(request: FixtureRequest, run_tests_with_plugin) -> tuple:  # pylint: disable=W0621
     """
     Fixture to run pytest with disabled plugin.
 
@@ -66,7 +67,7 @@ def plugin_disabled(request, run_tests_with_plugin) -> tuple:  # pylint: disable
 
 
 @pytest.fixture(params=[1, randint(2, 10)], ids=["one_rerun", "several_reruns"])
-def plugin_enabled(request, run_tests_with_plugin) -> tuple:  # pylint: disable=redefined-outer-name
+def plugin_enabled(request: FixtureRequest, run_tests_with_plugin) -> tuple:  # pylint: disable=W0621
     """
     Fixture to run pytest with enabled plugin with different rerun count values.
 
@@ -82,7 +83,7 @@ def plugin_enabled(request, run_tests_with_plugin) -> tuple:  # pylint: disable=
 
 
 @pytest.fixture(params=[None, 0, float(randint(5, 100)) / 10.0], ids=["default", "zero_delay", "several_seconds"])
-def plugin_delay(request, run_tests_with_plugin) -> tuple:  # pylint: disable=redefined-outer-name
+def plugin_delay(request: FixtureRequest, run_tests_with_plugin) -> tuple:  # pylint: disable=W0621
     """
     Fixture to run pytest with plugin with different delay values.
 
@@ -107,7 +108,7 @@ def plugin_delay(request, run_tests_with_plugin) -> tuple:  # pylint: disable=re
     ],
     ids=["incorrect", "show_only_last", "delay"],
 )
-def plugin_invalid_arguments(request, run_tests_with_plugin) -> tuple:  # pylint: disable=redefined-outer-name
+def plugin_invalid_arguments(request: FixtureRequest, run_tests_with_plugin) -> tuple:  # pylint: disable=W0621
     """
     Fixture to run pytest with enabled plugin with different rerun count values.
 
@@ -123,7 +124,7 @@ def plugin_invalid_arguments(request, run_tests_with_plugin) -> tuple:  # pylint
     return run_tests_with_plugin("tests/test_source/test_always_fails.py", arg), request.param.split("=")[0]
 
 
-def test_arguments_plugin_disabled(plugin_disabled):  # pylint: disable=redefined-outer-name
+def test_arguments_plugin_disabled(plugin_disabled):  # pylint: disable=W0621
     """
     Test that the plugin is disabled when no arguments are passed.
 
@@ -139,7 +140,7 @@ def test_arguments_plugin_disabled(plugin_disabled):  # pylint: disable=redefine
     assert " 1 failed, 2 passed in " in output
 
 
-def test_arguments_rerun_count(plugin_enabled):  # pylint: disable=redefined-outer-name
+def test_arguments_rerun_count(plugin_enabled):  # pylint: disable=W0621
     """
     Test that the plugin reruns the test the correct number of times.
 
@@ -154,7 +155,7 @@ def test_arguments_rerun_count(plugin_enabled):  # pylint: disable=redefined-out
     assert f"1 failed, {rerun_count} rerun in " in output
 
 
-def test_arguments_delay(plugin_delay):  # pylint: disable=redefined-outer-name
+def test_arguments_delay(plugin_delay):  # pylint: disable=W0621
     """
     Test that the plugin delays the rerun the correct number of seconds.
 
@@ -171,7 +172,7 @@ def test_arguments_delay(plugin_delay):  # pylint: disable=redefined-outer-name
     assert float(run_time) >= delay
 
 
-def test_arguments_show_only_last(run_tests_with_plugin):  # pylint: disable=redefined-outer-name
+def test_arguments_show_only_last(run_tests_with_plugin):  # pylint: disable=W0621
     """
     Test that the plugin only shows the last run when the argument is passed.
 
@@ -187,12 +188,12 @@ def test_arguments_show_only_last(run_tests_with_plugin):  # pylint: disable=red
     assert "1 failed in " in output
 
 
-def test_arguments_invalid_arguments(plugin_invalid_arguments):  # pylint: disable=redefined-outer-name
+def test_arguments_invalid_arguments(plugin_invalid_arguments):  # pylint: disable=W0621
     """
     Test that the plugin returns an error when invalid arguments are passed.
 
-    :param run_tests_with_plugin: fixture to run pytest with the plugin
-    :type run_tests_with_plugin: function
+    :param plugin_invalid_arguments: fixture to run pytest with the plugin
+    :type plugin_invalid_arguments: function
     :return: none
     """
     (error_code, output), param = plugin_invalid_arguments

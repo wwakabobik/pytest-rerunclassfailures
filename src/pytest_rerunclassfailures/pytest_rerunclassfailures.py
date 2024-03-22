@@ -7,7 +7,7 @@ from typing import Tuple
 
 import _pytest.nodes
 import pytest
-from _pytest.runner import runtestprotocol
+from _pytest.runner import runtestprotocol, pytest_runtest_protocol
 
 
 def pytest_addoption(parser):
@@ -55,22 +55,21 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         self.only_last = config.getoption("--rerun-show-only-last")  # rerun only the last failed test
         self.logger = logging.getLogger("pytest")
 
-    def _report_run(self, item: _pytest.nodes.Item, parent_name: str) -> None:
+    def _report_run(self, item: _pytest.nodes.Item, test_class: dict) -> None:
         """
         Report the class test run.
 
         :param item: pytest item
         :type item: _pytest.nodes.Item
-        :param parent_name: parent class name
-        :type parent_name: str
+        :param test_class: test class
+        :type test_class: dict
         """
-        if parent_name in self.rerun_classes:
-            if item.nodeid in self.rerun_classes[parent_name]:
-                item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
-                for rerun in self.rerun_classes[parent_name][item.nodeid]:
-                    for report in rerun:
-                        item.ihook.pytest_runtest_logreport(report=report)
-                item.ihook.pytest_runtest_logfinish(nodeid=item.nodeid, location=item.location)
+        if item.nodeid in test_class:
+            item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
+            for rerun in test_class[item.nodeid]:
+                for report in rerun:
+                    item.ihook.pytest_runtest_logreport(report=report)
+            item.ihook.pytest_runtest_logfinish(nodeid=item.nodeid, location=item.location)
 
     @pytest.hookimpl(tryfirst=True)
     def pytest_runtest_protocol(self, item: _pytest.nodes.Item, nextitem: _pytest.nodes.Item):  # pylint: disable=W0613
@@ -82,26 +81,26 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :param nextitem: next pytest item
         :type nextitem: _pytest.nodes.Item
         """
-        if item.cls is None or self.rerun_max == 0:  # type: ignore
+        parent_class = item.getparent(pytest.Class)
+        module = item.nodeid.split("::")[0]
+
+        if item.cls is None or self.rerun_max == 0 or not parent_class:  # type: ignore
+            pytest_runtest_protocol(item, nextitem=nextitem)
             return False  # ignore non-class items or plugin disabled
 
-        parent_class = item.getparent(pytest.Class)
-
-        if not parent_class:  # this check needs to be done separately to not raise mypy warnings (false-positive)
-            return False
-
-        initial_state = self._save_parent_initial_state(parent_class)
-
-        if parent_class.name not in self.rerun_classes:
-            self.rerun_classes[parent_class.name] = {}  # to store class run results
+        if module not in self.rerun_classes:
+            self.rerun_classes[module] = {}
+        if parent_class.name not in self.rerun_classes[module]:
+            self.rerun_classes[module][parent_class.name] = {}  # to store class run results
         else:
-            self._report_run(item, parent_class.name)  # report the rest of the results we already made the right time
-            return False
+            self._report_run(item, self.rerun_classes[module][parent_class.name])  # report the rest of the results
+            return True
 
         siblings = self._collect_sibling_items(item)
 
         rerun_count = 0
         passed = False
+        initial_state = self._save_parent_initial_state(parent_class)
         while not passed and rerun_count < self.rerun_max:
             passed = True
             for i in range(len(siblings) - 1):
@@ -109,14 +108,13 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                 nextitem = siblings[i + 1] if siblings[i + 1] is not None else siblings[0]
                 siblings[i].reports = runtestprotocol(siblings[i], nextitem=nextitem, log=False)
 
-                # Create a new list of reports for each rerun, if needed
-                if siblings[i].nodeid not in self.rerun_classes[parent_class.name]:
-                    self.rerun_classes[parent_class.name][siblings[i].nodeid] = []
-                if rerun_count not in self.rerun_classes[parent_class.name][siblings[i].nodeid]:
-                    self.rerun_classes[parent_class.name][siblings[i].nodeid].append([])
+                if siblings[i].nodeid not in self.rerun_classes[module][parent_class.name]:
+                    self.rerun_classes[module][parent_class.name][siblings[i].nodeid] = []
+                if rerun_count not in self.rerun_classes[module][parent_class.name][siblings[i].nodeid]:
+                    self.rerun_classes[module][parent_class.name][siblings[i].nodeid].append([])
 
                 for report in siblings[i].reports:
-                    self.rerun_classes[parent_class.name][siblings[i].nodeid][rerun_count].append(report)
+                    self.rerun_classes[module][parent_class.name][siblings[i].nodeid][rerun_count].append(report)
                     if report.failed and not hasattr(report, "wasxfail"):
                         passed = False
 
@@ -127,12 +125,12 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
             if not passed and rerun_count < self.rerun_max:
                 item, parent_class, siblings = self._teardown_rerun(item, parent_class, siblings, initial_state)
                 self.logger.info(
-                    "Rerunning %s - %s time(s) after %s seconds", parent_class.name, rerun_count, self.delay
+                    "Rerunning %s::%s - %s time(s) after %s seconds", module, parent_class.name, rerun_count, self.delay
                 )
                 sleep(self.delay)
 
-        self._process_reports(parent_class.name)
-        self._report_run(item, parent_class.name)
+        self._process_reports(self.rerun_classes[module][parent_class.name])
+        self._report_run(item, self.rerun_classes[module][parent_class.name])
         item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
         return True
 
@@ -252,19 +250,19 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
         return test_class, siblings
 
-    def _process_reports(self, class_name) -> None:
+    def _process_reports(self, test_class: dict) -> None:
         """
         Process the reports.
 
         :param class_name: class name
-        :type class_name: str
+        :type class_name: dict
         :return: None
         :rtype: None
         """
-        for sibling, reruns in self.rerun_classes[class_name].items():
+        for sibling, reruns in test_class.items():
             if len(reruns) > 1:
                 if self.only_last:
-                    self.rerun_classes[class_name][sibling] = [reruns[-1]]
+                    test_class[sibling] = [reruns[-1]]
                 else:
                     for rerun in reruns[:-1]:
                         for report in rerun:

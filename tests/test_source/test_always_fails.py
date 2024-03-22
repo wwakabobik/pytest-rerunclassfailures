@@ -1,4 +1,4 @@
-"""This class always fail"""
+"""This class always fails"""
 
 
 class TestAlwaysFail:  # pylint: disable=too-few-public-methods
