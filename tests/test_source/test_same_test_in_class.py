@@ -8,6 +8,6 @@ class TestSameTestInClass:  # pylint: disable=too-few-public-methods
         """This test always passes"""
         assert True
 
-    def test_same_test(self):  # pylint: disable=function-redefined
+    def test_same_test(self):  # type: ignore  # pylint: disable=function-redefined
         """This test always fails"""
         assert False

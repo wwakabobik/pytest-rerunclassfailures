@@ -13,7 +13,7 @@ class TestSameModuleClass:
         assert False
 
 
-class TestSameModuleClass:  # pylint: disable=function-redefined
+class TestSameModuleClass:  # type: ignore  # pylint: disable=function-redefined
     """This class has exactly the same name as other"""
 
     def test_same_class_true(self):

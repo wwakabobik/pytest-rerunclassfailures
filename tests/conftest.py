@@ -53,7 +53,7 @@ def run_tests_with_plugin(request: FixtureRequest):  # pylint: disable=unused-ar
 
 
 @pytest.fixture
-def run_default_tests(run_tests_with_plugin):
+def run_default_tests(run_tests_with_plugin):  # pylint: disable=redefined-outer-name
     """
     Fixture to run pytest with the plugin and default arguments.
 
