@@ -284,7 +284,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                     if getattr(fixture_def, cached_result, None) is not None:
                         result, _, err = getattr(fixture_def, cached_result)
                         if err:  # Deleting cached results for only failed fixtures
-                            setattr(fixture_def, result, None)
+                            setattr(fixture_def, cached_result, None)
 
 
 def pytest_configure(config):

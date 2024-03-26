@@ -1,0 +1,91 @@
+"""This test checks that the plugin correctly handles a class attributes and fixtures"""
+
+
+def test_class_arguments_non_init(run_default_tests):  # pylint: disable=W0613
+    """
+    This test check test with the same class name in the module will be rerun correctly
+
+    :param run_default_tests: fixture to run pytest with the plugin and default arguments
+    :type run_default_tests: function
+    """
+    return_code, output = run_default_tests("tests/test_source/test_non_init_attributes.py")
+    assert return_code == 1
+    assert output.count("RERUN") == 3
+    assert output.count("PASSED") == 2
+    assert " 1 failed, 2 passed, 3 rerun in " in output
+    assert "test_non_init_attribute_forced_failure FAILED" in output
+
+
+def test_class_arguments_function_scope_fixture(run_default_tests):  # pylint: disable=W0613
+    """
+    This test check test with the same class name in the module will be rerun correctly
+
+    :param run_default_tests: fixture to run pytest with the plugin and default arguments
+    :type run_default_tests: function
+    """
+    return_code, output = run_default_tests("tests/test_source/test_function_fixture_attributes.py")
+    assert return_code == 1
+    assert output.count("RERUN") == 3
+    assert output.count("PASSED") == 2
+    assert " 1 failed, 2 passed, 3 rerun in " in output
+    assert "test_function_scope_fixture_attribute_forced_failure FAILED" in output
+
+
+def test_class_arguments_ext_function_scope_fixture(run_default_tests):  # pylint: disable=W0613
+    """
+    This test check test with the same class name in the module will be rerun correctly
+
+    :param run_default_tests: fixture to run pytest with the plugin and default arguments
+    :type run_default_tests: function
+    """
+    return_code, output = run_default_tests("tests/test_source/test_ext_function_fixture_attributes.py")
+    assert return_code == 1
+    assert output.count("RERUN") == 3
+    assert output.count("PASSED") == 2
+    assert " 1 failed, 2 passed, 3 rerun in " in output
+    assert "test_ext_function_scope_fixture_attribute_forced_failure FAILED" in output
+
+
+def test_class_arguments_class_scope_fixture(run_default_tests):  # pylint: disable=W0613
+    """
+    This test check test with the same class name in the module will be rerun correctly
+
+    :param run_default_tests: fixture to run pytest with the plugin and default arguments
+    :type run_default_tests: function
+    """
+    return_code, output = run_default_tests("tests/test_source/test_class_fixture_attributes.py")
+    assert return_code == 1
+    assert output.count("RERUN") == 3
+    assert output.count("PASSED") == 2
+    assert " 1 failed, 2 passed, 3 rerun in " in output
+    assert "test_class_scope_fixture_attribute_forced_failure FAILED" in output
+
+
+def test_class_arguments_list_handling(run_default_tests):  # pylint: disable=W0613
+    """
+    This test check test with the same class name in the module will be rerun correctly
+
+    :param run_default_tests: fixture to run pytest with the plugin and default arguments
+    :type run_default_tests: function
+    """
+    return_code, output = run_default_tests("tests/test_source/test_list_attributes.py")
+    assert return_code == 1
+    assert output.count("RERUN") == 3
+    assert output.count("PASSED") == 2
+    assert " 1 failed, 2 passed, 3 rerun in " in output
+    assert "test_list_type_attribute_forced_failure FAILED" in output
+
+
+def test_class_arguments_dict_handling(run_default_tests):  # pylint: disable=W0613
+    """
+    This test check test with the same class name in the module will be rerun correctly
+
+    :param run_default_tests: fixture to run pytest with the plugin and default arguments
+    :type run_default_tests: function
+    """
+    return_code, output = run_default_tests("tests/test_source/test_dict_attributes.py")
+    assert return_code == 1
+    assert output.count("RERUN") == 3
+    assert output.count("PASSED") == 2
+    assert " 1 failed, 2 passed, 3 rerun in " in output
+    assert "test_dict_type_attribute_forced_failure FAILED" in output
