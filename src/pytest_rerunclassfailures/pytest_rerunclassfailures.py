@@ -226,6 +226,26 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                 self.logger.debug("While loading state of parent class: can't deepcopy %s: %s", attr_name, error)
         return parent
 
+    def _remove_non_initial_attributes(self, parent: pytest.Class, initial_state: dict) -> None:
+        """
+        Remove non-initial attributes.
+
+        :param parent: pytest class
+        :type parent: pytest.Class
+        :param initial_state: parent initial state
+        :type initial_state: dict
+        """
+        for attr_name in dir(parent.obj):
+            if (
+                not callable(getattr(parent.obj, attr_name))
+                and not attr_name.startswith("__")
+                and not attr_name.startswith("___")
+                and attr_name != "pytestmark"
+                and attr_name not in initial_state
+            ):
+                self.logger.debug("Removing non-default attribute %s from %s", attr_name, parent.name)
+                delattr(parent.obj, attr_name)
+
     def _recreate_test_class(self, test_class: pytest.Class, siblings: list, initial_state: dict) -> tuple:
         """
         Recreate the test class.
@@ -243,6 +263,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         if hasattr(test_class, "_previousfailed"):
             delattr(test_class, "_previousfailed")
 
+        # Remove non-initial attributes. BUT! currently we can't remove them because we're not re-call the fixtures
+        #  self._remove_non_initial_attributes(test_class, initial_state)
         # Load the original test class from the pytest Class object and propagate to the siblings
         self._set_parent_initial_state(test_class, initial_state)
         for i in range(len(siblings) - 1):
