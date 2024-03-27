@@ -31,12 +31,12 @@ class TestFunctionFixturesAttributes:
 
     def test_function_fixtures_attribute_recheck(self, function_fixture_secondary):  # pylint: disable=W0621
         """Test function fixture attribute after changing attribute value"""
-        assert self.attribute == 'secondary'  # type: ignore  # pylint: disable=no-member
-        assert function_fixture_secondary == 'secondary'
+        assert self.attribute == "secondary"  # type: ignore  # pylint: disable=no-member,attribute-defined-outside-init
+        assert function_fixture_secondary == "secondary"
         self.attribute = random_attribute_value  # type: ignore  # pylint: disable=attribute-defined-outside-init
         # attribute is changed, but fixture is not
         assert self.attribute == random_attribute_value
-        assert function_fixture_secondary == 'secondary'
+        assert function_fixture_secondary == "secondary"
 
     def test_function_fixtures_attribute_forced_failure(self):
         """Test function fixture attribute to be forced failure"""
