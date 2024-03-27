@@ -23,7 +23,7 @@ class TestWithClassScopeFixtureAttributes:
 
     def test_class_scope_fixture_attribute_recheck(self):
         """Test class scope fixture attribute after changing attribute value"""
-        self.attribute = random_attribute_value
+        self.attribute = random_attribute_value  # type: ignore  # pylint: disable=attribute-defined-outside-init
         assert self.attribute == random_attribute_value
 
     def test_class_scope_fixture_attribute_forced_failure(self):

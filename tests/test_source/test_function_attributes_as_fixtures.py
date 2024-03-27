@@ -18,23 +18,22 @@ def function_fixture(request):
 def function_fixture_secondary(request):
     """Fixture to set function attribute"""
     request.cls.attribute = "secondary"
-    print(f"FXT: {request.cls.attribute}")
     return "secondary"
 
 
 class TestFunctionFixturesAttributes:
     """Test class with function params attributes"""
 
-    def test_function_fixtures_attribute_initial(self, function_fixture):
+    def test_function_fixtures_attribute_initial(self, function_fixture):  # pylint: disable=W0621
         """Test function fixture attribute at the beginning of the class"""
         assert self.attribute == "initial"
         assert function_fixture == "initial"
 
-    def test_function_fixtures_attribute_recheck(self, function_fixture_secondary):
+    def test_function_fixtures_attribute_recheck(self, function_fixture_secondary):  # pylint: disable=W0621
         """Test function fixture attribute after changing attribute value"""
         assert self.attribute == 'secondary'  # type: ignore  # pylint: disable=no-member
         assert function_fixture_secondary == 'secondary'
-        self.attribute = random_attribute_value
+        self.attribute = random_attribute_value  # type: ignore  # pylint: disable=attribute-defined-outside-init
         # attribute is changed, but fixture is not
         assert self.attribute == random_attribute_value
         assert function_fixture_secondary == 'secondary'

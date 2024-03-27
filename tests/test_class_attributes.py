@@ -2,7 +2,7 @@
 import pytest
 
 
-def test_class_arguments_non_init(run_default_tests):  # pylint: disable=W0613
+def test_class_attributes_non_init(run_default_tests):  # pylint: disable=W0613
     """
     This test check test with the same class name in the module will be rerun correctly
 
@@ -17,7 +17,7 @@ def test_class_arguments_non_init(run_default_tests):  # pylint: disable=W0613
     assert "test_non_init_attribute_forced_failure FAILED" in output
 
 
-def test_class_arguments_function_scope_fixture(run_default_tests):  # pylint: disable=W0613
+def test_class_attributes_function_scope_fixture(run_default_tests):  # pylint: disable=W0613
     """
     This test check test with the same class name in the module will be rerun correctly
 
@@ -32,7 +32,7 @@ def test_class_arguments_function_scope_fixture(run_default_tests):  # pylint: d
     assert "test_function_scope_fixture_attribute_forced_failure FAILED" in output
 
 
-def test_class_arguments_ext_function_scope_fixture(run_default_tests):  # pylint: disable=W0613
+def test_class_attributes_ext_function_scope_fixture(run_default_tests):  # pylint: disable=W0613
     """
     This test check test with the same class name in the module will be rerun correctly
 
@@ -47,7 +47,7 @@ def test_class_arguments_ext_function_scope_fixture(run_default_tests):  # pylin
     assert "test_ext_function_scope_fixture_attribute_forced_failure FAILED" in output
 
 
-def test_class_arguments_class_scope_fixture(run_default_tests):  # pylint: disable=W0613
+def test_class_attributes_class_scope_fixture(run_default_tests):  # pylint: disable=W0613
     """
     This test check test with the same class name in the module will be rerun correctly
 
@@ -62,7 +62,7 @@ def test_class_arguments_class_scope_fixture(run_default_tests):  # pylint: disa
     assert "test_class_scope_fixture_attribute_forced_failure FAILED" in output
 
 
-def test_class_arguments_list_handling(run_default_tests):  # pylint: disable=W0613
+def test_class_attributes_list_handling(run_default_tests):  # pylint: disable=W0613
     """
     This test check test with the same class name in the module will be rerun correctly
 
@@ -77,7 +77,7 @@ def test_class_arguments_list_handling(run_default_tests):  # pylint: disable=W0
     assert "test_list_type_attribute_forced_failure FAILED" in output
 
 
-def test_class_arguments_dict_handling(run_default_tests):  # pylint: disable=W0613
+def test_class_attributes_dict_handling(run_default_tests):  # pylint: disable=W0613
     """
     This test check test with the same class name in the module will be rerun correctly
 
@@ -92,7 +92,7 @@ def test_class_arguments_dict_handling(run_default_tests):  # pylint: disable=W0
     assert "test_dict_type_attribute_forced_failure FAILED" in output
 
 
-def test_class_arguments_function_params(run_default_tests):  # pylint: disable=W0613
+def test_class_attributes_function_params(run_default_tests):  # pylint: disable=W0613
     """
     This test check test with the same class name in the module will be rerun correctly
 
@@ -108,7 +108,7 @@ def test_class_arguments_function_params(run_default_tests):  # pylint: disable=
 
 
 @pytest.mark.xfail(reason="This test is expected to fail due to fixtures not reinitialized")
-def test_class_arguments_function_fixtures(run_default_tests):  # pylint: disable=W0613
+def test_class_attributes_function_fixtures(run_default_tests):  # pylint: disable=W0613
     """
     This test check test with the same class name in the module will be rerun correctly
 
@@ -121,5 +121,3 @@ def test_class_arguments_function_fixtures(run_default_tests):  # pylint: disabl
     assert output.count("PASSED") == 2
     assert " 1 failed, 2 passed, 3 rerun in " in output
     assert "test_function_fixtures_attribute_forced_failure FAILED" in output
-
-
