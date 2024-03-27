@@ -73,3 +73,26 @@ def test_format_handling_same_test_in_class(run_default_tests):  # pylint: disab
     assert output.count("tests/test_source/test_same_test_in_class.py::TestSameTestInClass::test_same_test") == 3
     assert output.count("RERUN") == 1
     assert " 1 failed, 1 rerun in " in output
+
+
+def test_format_handling_several_classes_in_module(run_default_tests):  # pylint: disable=W0613
+    """
+    This test check test with the same test name in the class will be rerun correctly
+
+    :param run_default_tests: fixture to run pytest with the plugin and default arguments
+    :type run_default_tests: function
+    """
+    return_code, output = run_default_tests("tests/test_source/test_several_classes_in_module.py")
+    assert return_code == 1
+    assert output.count("tests/test_source/test_several_classes_in_module.py::TestSeveralModuleClass") == 5
+    assert output.count("tests/test_source/test_several_classes_in_module.py::TestSeveralOtherModuleClass") == 5
+    assert output.count("TestSeveralModuleClass::test_several_class_true RERUN") == 1
+    assert output.count("TestSeveralModuleClass::test_several_class_false RERUN") == 1
+    assert output.count("TestSeveralOtherModuleClass::test_several_class_true RERUN") == 1
+    assert output.count("TestSeveralOtherModuleClass::test_several_class_false RERUN") == 1
+    assert output.count("TestSeveralModuleClass::test_several_class_true PASSED") == 1
+    assert output.count("TestSeveralOtherModuleClass::test_several_class_true PASSED") == 1
+    assert output.count("TestSeveralModuleClass::test_several_class_false FAILED") == 1
+    assert output.count("TestSeveralOtherModuleClass::test_several_class_false FAILED") == 1
+    assert output.count("RERUN") == 4
+    assert " 2 failed, 2 passed, 4 rerun in " in output

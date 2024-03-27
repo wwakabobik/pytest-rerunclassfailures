@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pytest-rerunclassfailures"
-version = "0.0.1"
+version = "0.0.2"
 keywords = ["pytest", "pytest-rerunclassfailures", "pytest-plugin", "testing"]
 authors = [
   { name="Iliya Vereshchagin", email="i.vereshchagin@gmail.com" },
@@ -31,6 +31,10 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Quality Assurance",
+    "Environment :: Plugins",
+    "Framework :: Pytest",
 ]
 
 install_requires = [

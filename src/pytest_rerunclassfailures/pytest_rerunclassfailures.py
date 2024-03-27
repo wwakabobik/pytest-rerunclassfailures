@@ -8,9 +8,10 @@ from typing import Tuple
 import _pytest.nodes
 import pytest
 from _pytest.runner import runtestprotocol, pytest_runtest_protocol
+from _pytest.config.argparsing import Parser
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: Parser):
     """
     Add options to the parser.
 
@@ -41,7 +42,7 @@ def pytest_addoption(parser):
 class RerunClassPlugin:  # pylint: disable=too-few-public-methods
     """Re-run failed tests in a class"""
 
-    def __init__(self, config) -> None:
+    def __init__(self, config: pytest.Config) -> None:
         """
         Initialize RerunClassPlugin class.
 
@@ -306,15 +307,16 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                     if getattr(fixture_def, cached_result, None) is not None:
                         _, _, err = getattr(fixture_def, cached_result)
                         if err:  # Deleting cached results for only failed fixtures
+                            self.logger.debug("Removing cached result for %s", fixture_def)
                             setattr(fixture_def, cached_result, None)
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config):
     """
     Configure the plugin.
 
     :param config: pytest config
-    :type config: _pytest.config.Config
+    :type config: pytest.Config
     """
     if config.getoption("--rerun-class-max") > 0:
         rerun_plugin = RerunClassPlugin(config)

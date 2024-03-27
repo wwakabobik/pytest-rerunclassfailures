@@ -1,5 +1,3 @@
 - Call class-scope fixtures while recreating class (and, thus, teardown)
-- Check keep order (using order mark)
-- Add tests
-- Add documentation
 - Add rerun summary
+- Add
