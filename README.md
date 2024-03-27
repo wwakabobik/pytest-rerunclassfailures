@@ -1,6 +1,6 @@
 # Pytest rerun class failures plugin
 
-[![Linters](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_linters.yml/badge.svg?branch=master)](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_linters.yml) [![Tests](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_tests.yml/badge.svg?branch=master)](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_tests.yml)
+[![PyPI version](https://badge.fury.io/py/pytest-rerunclassfailures.svg)](https://badge.fury.io/py/pytest-rerunclassfailures) [![Linters](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_linters.yml/badge.svg?branch=master)](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_linters.yml) [![Tests](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_tests.yml/badge.svg?branch=master)](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_tests.yml)
 
 This plugin helps to rerun whole test classes that failed during the test run.
 This means in case of failure of any class within the test class, the whole class will be rerun. 
@@ -23,19 +23,13 @@ pip install pytest-rerunclassfailures
 
 ## Usage
 
-Run your tests with plugin by passing by `-p` option:
+After installation plugin ready to use, you do not need to pass extra options or add plugin to `pytest.ini`. Just run your tests as usual:
+
 ```bash
-PYTHONPATH=. pytest -s tests -p pytest-rerunclassfailures --rerun-class-max=3
-```
-Add plugin to `pytest.ini` file:
-
-```ini
-[pytest]
-plugins = pytest-rerunclassfailures
-addopts = --rerun-class-max=3
+pytest tests --rerun-class-max=2
 ```
 
-You always can pass `--rerun-class-max` with number of reruns for the class. By default, the plugin is disabled.
+You always need pass `--rerun-class-max` with number of reruns for the class. By default, the plugin is disabled.
 
 Other options you may use:
 - `--rerun-class-max` - number of reruns for the class. Default is 0.
@@ -44,6 +38,26 @@ Other options you may use:
 
 ```bash
 PYTHONPATH=. pytest -s tests -p pytest_rerunclassfailures --rerun-class-max=3 --rerun-delay=1 --rerun-show-only-last
+```
+
+In some cases you may manage plugins manually, so, you can do it in two ways:
+
+- Run your tests with plugin by passing by `-p` option:
+```bash
+PYTHONPATH=. pytest -s tests -p pytest-rerunclassfailures --rerun-class-max=3
+```
+- Add plugin to `pytest.ini` file:
+
+```ini
+[pytest]
+plugins = pytest-rerunclassfailures
+addopts = --rerun-class-max=3
+```
+
+To disable plugin (even ignoring passed `--rerun-class-max` option) use:
+
+```bash
+pytest test -p no:pytest-rerunclassfailures
 ```
 
 ## pytest-xdist support
