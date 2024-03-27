@@ -111,7 +111,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
                 if siblings[i].nodeid not in self.rerun_classes[module][parent_class.name]:
                     self.rerun_classes[module][parent_class.name][siblings[i].nodeid] = []
-                if rerun_count not in self.rerun_classes[module][parent_class.name][siblings[i].nodeid]:
+                while len(self.rerun_classes[module][parent_class.name][siblings[i].nodeid]) <= rerun_count:
                     self.rerun_classes[module][parent_class.name][siblings[i].nodeid].append([])
 
                 for report in siblings[i].reports:
