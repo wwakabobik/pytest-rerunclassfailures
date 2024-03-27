@@ -1,0 +1,3 @@
+pluggy
+pydantic
+pytest>=7.2

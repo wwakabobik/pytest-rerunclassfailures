@@ -1,4 +1,4 @@
-"""Rerun failed tests in a class to eliminate flaky failures."""
+"""Rerun failed tests in a class to eliminate flaky failures"""
 
 import logging
 from copy import deepcopy
@@ -8,9 +8,10 @@ from typing import Tuple
 import _pytest.nodes
 import pytest
 from _pytest.runner import runtestprotocol, pytest_runtest_protocol
+from _pytest.config.argparsing import Parser
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: Parser):
     """
     Add options to the parser.
 
@@ -39,9 +40,9 @@ def pytest_addoption(parser):
 
 
 class RerunClassPlugin:  # pylint: disable=too-few-public-methods
-    """Re-run failed tests in a class."""
+    """Re-run failed tests in a class"""
 
-    def __init__(self, config) -> None:
+    def __init__(self, config: pytest.Config) -> None:
         """
         Initialize RerunClassPlugin class.
 
@@ -226,6 +227,26 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                 self.logger.debug("While loading state of parent class: can't deepcopy %s: %s", attr_name, error)
         return parent
 
+    def _remove_non_initial_attributes(self, parent: pytest.Class, initial_state: dict) -> None:
+        """
+        Remove non-initial attributes.
+
+        :param parent: pytest class
+        :type parent: pytest.Class
+        :param initial_state: parent initial state
+        :type initial_state: dict
+        """
+        for attr_name in dir(parent.obj):
+            if (
+                not callable(getattr(parent.obj, attr_name))
+                and not attr_name.startswith("__")
+                and not attr_name.startswith("___")
+                and attr_name != "pytestmark"
+                and attr_name not in initial_state
+            ):
+                self.logger.debug("Removing non-default attribute %s from %s", attr_name, parent.name)
+                delattr(parent.obj, attr_name)
+
     def _recreate_test_class(self, test_class: pytest.Class, siblings: list, initial_state: dict) -> tuple:
         """
         Recreate the test class.
@@ -243,6 +264,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         if hasattr(test_class, "_previousfailed"):
             delattr(test_class, "_previousfailed")
 
+        # Remove non-initial attributes. BUT! currently we can't remove them because we're not re-call the fixtures
+        #  self._remove_non_initial_attributes(test_class, initial_state)
         # Load the original test class from the pytest Class object and propagate to the siblings
         self._set_parent_initial_state(test_class, initial_state)
         for i in range(len(siblings) - 1):
@@ -282,18 +305,19 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                 fixture_defs = fixture_info.name2fixturedefs[fixture_def_str]
                 for fixture_def in fixture_defs:
                     if getattr(fixture_def, cached_result, None) is not None:
-                        result, _, err = getattr(fixture_def, cached_result)
+                        _, _, err = getattr(fixture_def, cached_result)
                         if err:  # Deleting cached results for only failed fixtures
-                            setattr(fixture_def, result, None)
+                            self.logger.debug("Removing cached result for %s", fixture_def)
+                            setattr(fixture_def, cached_result, None)
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config):
     """
     Configure the plugin.
 
     :param config: pytest config
-    :type config: _pytest.config.Config
+    :type config: pytest.Config
     """
     if config.getoption("--rerun-class-max") > 0:
         rerun_plugin = RerunClassPlugin(config)
-        config.pluginmanager.register(rerun_plugin, "rerun_class_plugin")
+        config.pluginmanager.register(rerun_plugin, "pytest-rerunclassfailures")
