@@ -10,8 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial version
 
-## [0.0.2] - 2024-03-27
+## [0.0.2] - 2024-03-26
 
 ### Added
 - Test suite added to cover most of the functionality
-- 
+- Added complete readme
+- Plugin setup has been updated
+
+
+## [0.0.3] - 2024-03-27
+
+### Fixed
+- Possible out of range error when rerunning tests more one time
