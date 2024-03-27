@@ -4,6 +4,7 @@ import pytest
 
 
 class TestDifferentStatuses:
+    """Test class with different statuses"""
 
     def test_pass(self):
         """This test always passes"""

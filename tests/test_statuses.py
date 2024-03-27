@@ -21,7 +21,7 @@ def test_different_statuses(run_default_tests):  # pylint: disable=W0613
     assert output.count("tests/test_source/test_different_statuses.py::test_not_reachable_xfail") == 0
     assert output.count("tests/test_source/test_different_statuses.py::test_not_reachable_skip") == 0
     assert output.count("tests/test_source/test_different_statuses.py::test_not_reachable_fail") == 0
-    assert " 1 failed, 1 passed, 1 skipped, 1 xfailed, 1 xpassed, 5 rerun in "
+    assert " 1 failed, 1 passed, 1 skipped, 1 xfailed, 1 xpassed, 5 rerun in " in output
     assert output.count("RERUN") == 5
 
 
@@ -33,5 +33,6 @@ def test_statuses_fail_fast(run_default_tests):  # pylint: disable=W0613
     :type run_default_tests: function
     """
     return_code, output = run_default_tests("tests/test_source/test_different_statuses.py")
+    assert return_code == 1
     assert "FAILED [ 50%]" in output
     assert "[ 100%]" not in output

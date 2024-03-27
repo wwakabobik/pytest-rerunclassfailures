@@ -74,6 +74,7 @@ def test_xdist_loadscope_not_used(run_default_tests):  # pylint: disable=W0613
     :type run_default_tests: function
     """
     return_code, output = run_default_tests("tests/test_source/test_several_classes_in_module.py", "-n=4")
+    assert return_code == 1
     assert "[gw2]" in output
     assert "[gw3]" in output
     assert output.count("] RERUN") == 4  # count of rerun tests remains the same, but they are distributed between nodes
@@ -87,7 +88,6 @@ def test_xdist_ordering_methods(run_default_tests):  # pylint: disable=W0613
     :type run_default_tests: function
     """
     return_code, output = run_default_tests("tests/test_source/test_run_order_both.py", "-n=2 --dist=loadscope")
-    print(output)
     assert return_code == 1
     assert output.count("] RERUN ") == 8
     assert " 2 failed, 6 passed, 8 rerun " in output
