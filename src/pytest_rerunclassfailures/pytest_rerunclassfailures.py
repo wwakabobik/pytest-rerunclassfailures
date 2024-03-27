@@ -320,4 +320,4 @@ def pytest_configure(config: pytest.Config):
     """
     if config.getoption("--rerun-class-max") > 0:
         rerun_plugin = RerunClassPlugin(config)
-        config.pluginmanager.register(rerun_plugin, "rerun_class_plugin")
+        config.pluginmanager.register(rerun_plugin, "pytest-rerunclassfailures")

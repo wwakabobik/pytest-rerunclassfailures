@@ -25,13 +25,13 @@ pip install pytest-rerunclassfailures
 
 Run your tests with plugin by passing by `-p` option:
 ```bash
-PYTHONPATH=. pytest -s tests -p pytest_rerunclassfailures --rerun-class-max=3
+PYTHONPATH=. pytest -s tests -p pytest-rerunclassfailures --rerun-class-max=3
 ```
 Add plugin to `pytest.ini` file:
 
 ```ini
 [pytest]
-plugins = pytest_rerunclassfailures
+plugins = pytest-rerunclassfailures
 addopts = --rerun-class-max=3
 ```
 
