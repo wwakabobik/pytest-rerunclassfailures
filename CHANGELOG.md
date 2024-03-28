@@ -31,4 +31,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.5] - 2024-03-28
 
 ### Fixed
-- Pypi package build icon issue
+- Fix pypi package icon issue
