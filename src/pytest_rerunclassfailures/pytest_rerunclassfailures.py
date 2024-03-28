@@ -20,6 +20,8 @@ def pytest_addoption(parser: Parser) -> None:
 
     :param parser: pytest parser
     :type parser: _pytest.config.argparsing.Parser
+    :return: None
+    :rtype: None
     """
     group = parser.getgroup("rerunclassfailures", "rerun class failures to eliminate flaky failures")
     group.addoption(
@@ -51,6 +53,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
         :param config: pytest config
         :type config: _pytest.config.Config
+        :return: None
+        :rtype: None
         """
         self.rerun_classes: dict = {}  # test classed already rerun
         self.rerun_max = config.getoption("--rerun-class-max")  # how many times to rerun the class
@@ -67,6 +71,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :type item: _pytest.nodes.Item
         :param test_class: test class
         :type test_class: dict
+        :return: None
+        :rtype: None
         """
         if item.nodeid in test_class:
             item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
@@ -262,6 +268,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :type parent: pytest.Class
         :param initial_state: parent initial state
         :type initial_state: dict
+        :return: None
+        :rtype: None
         """
         for attr_name in dir(parent.obj):
             if (
@@ -324,6 +332,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
         :param item: pytest item
         :type item: _pytest.nodes.Item
+        :return: None
+        :rtype: None
         """
         cached_result = "cached_result"
         fixture_info = getattr(item, "_fixtureinfo", None)
@@ -377,6 +387,8 @@ def pytest_configure(config: Config) -> None:
 
     :param config: pytest config
     :type config: pytest.Config
+    :return: None
+    :rtype: None
     """
     if config.getoption("--rerun-class-max") > 0:
         rerun_plugin = RerunClassPlugin(config)
