@@ -28,8 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fix reporting in case of abort: pass skipped status to the report
 
-## [0.0.5] - 2024-XX-XX
+## [0.0.5] - 2024-03-29
 
 ### Updated
 - Added missed typing for plugin functions and their arguments
 - Add terminal reporter for reruns
+- Added xdist for package testing

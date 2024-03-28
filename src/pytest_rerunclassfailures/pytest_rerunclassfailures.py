@@ -40,7 +40,14 @@ def pytest_addoption(parser: Parser) -> None:
         action="store_true",
         dest="rerun_show_only_last",
         default=False,
-        help="show only the last rerun if True, otherwise show all tries",
+        help="show only the last rerun if passed",
+    )
+    group.addoption(
+        "--hide-rerun-details",
+        action="store_true",
+        dest="hide_rerun_details",
+        default=False,
+        help="hide rerun details in terminal output if passed",
     )
 
 
@@ -61,6 +68,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         self.rerun_max = self.rerun_max + 1 if self.rerun_max > 0 else 0  # increment by 1 to include the initial run
         self.delay = config.getoption("--rerun-delay")  # delay between reruns in seconds
         self.only_last = config.getoption("--rerun-show-only-last")  # rerun only the last failed test
+        self.hide_terminal_output = config.getoption("--hide-rerun-details")  # hide rerun details in terminal output
         self.logger = logging.getLogger("pytest")
 
     def _report_run(self, item: _pytest.nodes.Item, test_class: dict) -> None:
@@ -362,7 +370,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :return: None
         :rtype: None
         """
-        if "rerun" not in terminalreporter.stats:
+        if "rerun" not in terminalreporter.stats or self.hide_terminal_output:
             return
 
         terminalreporter._tw.sep("=", "RERUNS")  # pylint: disable=W0212
