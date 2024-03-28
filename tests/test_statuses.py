@@ -21,7 +21,8 @@ def test_different_statuses(run_default_tests):  # pylint: disable=W0613
     assert output.count("tests/test_source/test_different_statuses.py::test_not_reachable_xfail") == 0
     assert output.count("tests/test_source/test_different_statuses.py::test_not_reachable_skip") == 0
     assert output.count("tests/test_source/test_different_statuses.py::test_not_reachable_fail") == 0
-    assert " 1 failed, 1 passed, 1 skipped, 1 xfailed, 1 xpassed, 5 rerun in " in output
+    assert " 1 failed, 1 passed, 6 skipped, 1 xfailed, 1 xpassed, 5 rerun in " in output
+    assert "FAILED [ 50%]" in output
     assert output.count("RERUN") == 5
 
 
@@ -34,5 +35,10 @@ def test_statuses_fail_fast(run_default_tests):  # pylint: disable=W0613
     """
     return_code, output = run_default_tests("tests/test_source/test_different_statuses.py")
     assert return_code == 1
-    assert "FAILED [ 50%]" in output
-    assert "[ 100%]" not in output
+    assert output.count("tests/test_source/test_different_statuses.py::TestDifferentStatuses::test_not_reachable_") == 5
+    assert output.count("Skipping test due to class execution was aborted during rerun") == 5
+    assert "test_not_reachable_pass SKIPPED [ 60%]" in output
+    assert "test_not_reachable_xpass SKIPPED [ 70%]" in output
+    assert "test_not_reachable_xfail SKIPPED [ 80%]" in output
+    assert "test_not_reachable_skip SKIPPED [ 90%]" in output
+    assert "test_not_reachable_fail SKIPPED [100%]" in output
