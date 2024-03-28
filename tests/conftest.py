@@ -74,7 +74,7 @@ def run_default_tests(run_tests_with_plugin):  # pylint: disable=redefined-outer
         :return: tuple with the return code and the output
         :rtype: tuple
         """
-        arg_list = ["--rerun-class-max=1"]
+        arg_list = ["--rerun-class-max=1", "--hide-rerun-details"]
         if args:
             arg_list += args.split(" ")
         return run_tests_with_plugin(test_path, arg_list)

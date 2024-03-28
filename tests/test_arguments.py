@@ -199,3 +199,40 @@ def test_arguments_invalid_arguments(plugin_invalid_arguments):  # pylint: disab
     (error_code, output), param = plugin_invalid_arguments
     assert f"error: argument {param}" in output
     assert error_code == 4
+
+
+def test_arguments_rerun_section_shown(run_tests_with_plugin):  # pylint: disable=W0621
+    """
+    Test that the plugin shows RERUNS section by default.
+
+    :param run_tests_with_plugin: fixture to run pytest with the plugin
+    :type run_tests_with_plugin: function
+    :return: none
+    """
+    args = ["--rerun-class-max=1"]
+    error_code, output = run_tests_with_plugin("tests/test_source/test_always_fails.py", args)
+    assert error_code == 1
+    assert "= RERUNS =" in output
+    assert "RERUN tests/test_source/test_always_fails.py::TestAlwaysFail::test_always_fail" in output
+    assert output.count("tests/test_source/test_always_fails.py:9: in test_always_fail") == 2
+    assert output.count("    assert False") == 2
+    assert output.count("E   assert False") == 2
+
+
+def test_arguments_rerun_section_hidden(run_tests_with_plugin):  # pylint: disable=W0621
+    """
+    Test that the plugin hides RERUNS section when the argument is passed.
+
+    :param run_tests_with_plugin: fixture to run pytest with the plugin
+    :type run_tests_with_plugin: function
+    :return: none
+    """
+    args = ["--rerun-class-max=1", "--hide-rerun-details"]
+    error_code, output = run_tests_with_plugin("tests/test_source/test_always_fails.py", args)
+    print(output)
+    assert error_code == 1
+    assert "= RERUNS =" not in output
+    assert "RERUN tests/test_source/test_always_fails.py::TestAlwaysFail::test_always_fail" not in output
+    assert output.count("tests/test_source/test_always_fails.py:9: in test_always_fail") == 1
+    assert output.count("    assert False") == 1
+    assert output.count("E   assert False") == 1

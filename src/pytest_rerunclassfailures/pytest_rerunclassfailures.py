@@ -7,17 +7,21 @@ from typing import Tuple
 
 import pytest
 import _pytest.nodes
+from _pytest.terminal import TerminalReporter
+from _pytest.config import Config
 from _pytest.reports import TestReport
 from _pytest.runner import runtestprotocol, pytest_runtest_protocol
 from _pytest.config.argparsing import Parser
 
 
-def pytest_addoption(parser: Parser):
+def pytest_addoption(parser: Parser) -> None:
     """
     Add options to the parser.
 
     :param parser: pytest parser
     :type parser: _pytest.config.argparsing.Parser
+    :return: None
+    :rtype: None
     """
     group = parser.getgroup("rerunclassfailures", "rerun class failures to eliminate flaky failures")
     group.addoption(
@@ -36,7 +40,14 @@ def pytest_addoption(parser: Parser):
         action="store_true",
         dest="rerun_show_only_last",
         default=False,
-        help="show only the last rerun if True, otherwise show all tries",
+        help="show only the last rerun if passed",
+    )
+    group.addoption(
+        "--hide-rerun-details",
+        action="store_true",
+        dest="hide_rerun_details",
+        default=False,
+        help="hide rerun details in terminal output if passed",
     )
 
 
@@ -49,12 +60,15 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
         :param config: pytest config
         :type config: _pytest.config.Config
+        :return: None
+        :rtype: None
         """
         self.rerun_classes: dict = {}  # test classed already rerun
         self.rerun_max = config.getoption("--rerun-class-max")  # how many times to rerun the class
         self.rerun_max = self.rerun_max + 1 if self.rerun_max > 0 else 0  # increment by 1 to include the initial run
         self.delay = config.getoption("--rerun-delay")  # delay between reruns in seconds
         self.only_last = config.getoption("--rerun-show-only-last")  # rerun only the last failed test
+        self.hide_terminal_output = config.getoption("--hide-rerun-details")  # hide rerun details in terminal output
         self.logger = logging.getLogger("pytest")
 
     def _report_run(self, item: _pytest.nodes.Item, test_class: dict) -> None:
@@ -65,6 +79,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :type item: _pytest.nodes.Item
         :param test_class: test class
         :type test_class: dict
+        :return: None
+        :rtype: None
         """
         if item.nodeid in test_class:
             item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
@@ -94,7 +110,9 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
             item.ihook.pytest_runtest_logfinish(nodeid=item.nodeid, location=item.location)
 
     @pytest.hookimpl(tryfirst=True)
-    def pytest_runtest_protocol(self, item: _pytest.nodes.Item, nextitem: _pytest.nodes.Item):  # pylint: disable=W0613
+    def pytest_runtest_protocol(
+        self, item: _pytest.nodes.Item, nextitem: _pytest.nodes.Item  # pylint: disable=W0613
+    ) -> bool:
         """
         Run the test protocol.
 
@@ -102,6 +120,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :type item: _pytest.nodes.Item
         :param nextitem: next pytest item
         :type nextitem: _pytest.nodes.Item
+        :return: True if any actions of plugin performed, False otherwise
+        :rtype: bool
         """
         parent_class = item.getparent(pytest.Class)
         module = item.nodeid.split("::")[0]
@@ -203,12 +223,12 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
         return siblings
 
-    def _save_parent_initial_state(self, parent):
+    def _save_parent_initial_state(self, parent: pytest.Class) -> dict:
         """
         Save the parent initial state.
 
         :param parent: pytest item
-        :type parent: _pytest.
+        :type parent: _pytest.Item
         :return: parent initial state
         :rtype: dict
         """
@@ -256,6 +276,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :type parent: pytest.Class
         :param initial_state: parent initial state
         :type initial_state: dict
+        :return: None
+        :rtype: None
         """
         for attr_name in dir(parent.obj):
             if (
@@ -318,6 +340,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
         :param item: pytest item
         :type item: _pytest.nodes.Item
+        :return: None
+        :rtype: None
         """
         cached_result = "cached_result"
         fixture_info = getattr(item, "_fixtureinfo", None)
@@ -331,13 +355,48 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                             self.logger.debug("Removing cached result for %s", fixture_def)
                             setattr(fixture_def, cached_result, None)
 
+    def pytest_terminal_summary(
+        self, terminalreporter: TerminalReporter, exitstatus: int, config: Config  # pylint: disable=unused-argument
+    ) -> None:
+        """
+        Reports reruns section to terminal.
 
-def pytest_configure(config: pytest.Config):
+        :param terminalreporter: pytest terminal reporter
+        :type terminalreporter: _pytest.terminal.TerminalReporter
+        :param exitstatus: exit status
+        :type exitstatus: int
+        :param config: pytest config
+        :type config: _pytest.config.Config
+        :return: None
+        :rtype: None
+        """
+        if "rerun" not in terminalreporter.stats or self.hide_terminal_output:
+            return
+
+        terminalreporter._tw.sep("=", "RERUNS")  # pylint: disable=W0212
+
+        for rerun_test in terminalreporter.stats["rerun"]:
+            pos = rerun_test.nodeid
+            terminalreporter._tw.line(f"RERUN {pos}")  # pylint: disable=W0212
+
+            if hasattr(rerun_test, "longrepr"):
+                if isinstance(rerun_test.longrepr, tuple):
+                    for line in rerun_test.longrepr:
+                        if line:
+                            terminalreporter._tw.line(str(line))  # pylint: disable=W0212
+                else:
+                    if rerun_test.longrepr:
+                        terminalreporter._tw.line(str(rerun_test.longrepr))  # pylint: disable=W0212
+
+
+def pytest_configure(config: Config) -> None:
     """
     Configure the plugin.
 
     :param config: pytest config
     :type config: pytest.Config
+    :return: None
+    :rtype: None
     """
     if config.getoption("--rerun-class-max") > 0:
         rerun_plugin = RerunClassPlugin(config)
