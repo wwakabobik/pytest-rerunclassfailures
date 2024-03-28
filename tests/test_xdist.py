@@ -12,7 +12,7 @@ def test_xdist_disabled(run_default_tests):  # pylint: disable=W0613
     assert return_code == 1
     assert output.count("RERUN") == 2
     assert output.count("PASSED") == 1
-    assert " 1 failed, 1 passed, 2 rerun in " in output
+    assert " 1 failed, 1 passed, 1 skipped, 2 rerun " in output
     assert "[gw" not in output
 
 
@@ -27,8 +27,8 @@ def test_xdist_one_node(run_default_tests):  # pylint: disable=W0613
     assert return_code == 1
     assert output.count("RERUN") == 2
     assert output.count("PASSED") == 1
-    assert " 1 failed, 1 passed, 2 rerun in " in output
-    assert output.count("[gw0] ") == 5
+    assert " 1 failed, 1 passed, 1 skipped, 2 rerun " in output
+    assert output.count("[gw0] ") == 6
 
 
 def test_xdist_two_nodes_one_class(run_default_tests):  # pylint: disable=W0613
@@ -42,8 +42,8 @@ def test_xdist_two_nodes_one_class(run_default_tests):  # pylint: disable=W0613
     assert return_code == 1
     assert output.count("RERUN") == 2
     assert output.count("PASSED") == 1
-    assert " 1 failed, 1 passed, 2 rerun in " in output
-    assert output.count("[gw0] ") == 5
+    assert " 1 failed, 1 passed, 1 skipped, 2 rerun in " in output
+    assert output.count("[gw0] ") == 6
     assert output.count("[gw1] ") == 0
 
 

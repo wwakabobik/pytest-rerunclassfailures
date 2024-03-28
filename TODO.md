@@ -1,4 +1,3 @@
 - Call class-scope fixtures while recreating class (and, thus, teardown)
 - Add rerun summary
-- Fix aborted percentage calculation
 - Add unit testing (achieve ~100% coverage)

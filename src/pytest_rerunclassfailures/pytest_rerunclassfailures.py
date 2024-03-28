@@ -5,8 +5,9 @@ from copy import deepcopy
 from time import sleep
 from typing import Tuple
 
-import _pytest.nodes
 import pytest
+import _pytest.nodes
+from _pytest.reports import TestReport
 from _pytest.runner import runtestprotocol, pytest_runtest_protocol
 from _pytest.config.argparsing import Parser
 
@@ -70,6 +71,26 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
             for rerun in test_class[item.nodeid]:
                 for report in rerun:
                     item.ihook.pytest_runtest_logreport(report=report)
+            item.ihook.pytest_runtest_logfinish(nodeid=item.nodeid, location=item.location)
+        else:  # if there are no reruns or reruns because fail-fast abort, report the test as skipped
+            file, _, test_with_class = item.nodeid.partition("::")
+            class_name, _, test_name = test_with_class.partition("::")
+            test = f"{class_name}.{test_name}" if class_name and test_name else class_name
+            fake_report = TestReport(
+                nodeid=item.nodeid,
+                location=(file, 0, test),
+                keywords={},
+                outcome="skipped",
+                longrepr=(test, 0, "Skipping test due to class execution was aborted during rerun"),
+                when="call",
+                sections=[("Reason", "Skipping test due to class execution was aborted during rerun")],
+                duration=0.0,
+                start=0.0,
+                stop=0.0,
+                user_properties=[],
+            )
+            item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
+            item.ihook.pytest_runtest_logreport(report=fake_report)
             item.ihook.pytest_runtest_logfinish(nodeid=item.nodeid, location=item.location)
 
     @pytest.hookimpl(tryfirst=True)
