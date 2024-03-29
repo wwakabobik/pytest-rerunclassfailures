@@ -1,6 +1,8 @@
 # Pytest rerun class failures plugin
 
-[![PyPI version](https://badge.fury.io/py/pytest-rerunclassfailures.svg)](https://badge.fury.io/py/pytest-rerunclassfailures) [![Linters](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_linters.yml/badge.svg?branch=master)](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_linters.yml) [![Tests](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_tests.yml/badge.svg?branch=master)](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_tests.yml)
+
+[![PyPI version](https://badge.fury.io/py/pytest-rerunclassfailures.svg)](https://badge.fury.io/py/pytest-rerunclassfailures) [![Linters](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_linters.yml/badge.svg?branch=master)](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_linters.yml) [![Tests](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_tests.yml/badge.svg?branch=master)](https://github.com/wwakabobik/pytest-rerunclassfailures/actions/workflows/master_tests.yml) [![Coverage Status](https://coveralls.io/repos/github/wwakabobik/pytest-rerunclassfailures/badge.svg?branch=master)](https://coveralls.io/github/wwakabobik/pytest-rerunclassfailures?branch=master) [![codecov](https://codecov.io/gh/wwakabobik/pytest-rerunclassfailures/graph/badge.svg?token=F1I7TBGE5U)](https://codecov.io/gh/wwakabobik/pytest-rerunclassfailures) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pytest-rerunclassfailures) [![Downloads](https://static.pepy.tech/badge/pytest-rerunclassfailures)](https://pepy.tech/project/pytest-rerunclassfailures) [![Downloads](https://static.pepy.tech/badge/pytest-rerunclassfailures/month)](https://pepy.tech/project/pytest-rerunclassfailures) ![PyPI - License](https://img.shields.io/pypi/l/pytest-rerunclassfailures)
+
 
 This plugin helps to rerun whole test classes that failed during the test run.
 This means in case of failure of any class within the test class, the whole class will be rerun. 
@@ -35,7 +37,7 @@ Other options you may use:
 - `--rerun-class-max` - number of reruns for the class. Default is 0.
 - `--rerun-delay` - delay between reruns in seconds. Default is 0.5.
 - `--rerun-show-only-last` - show only last rerun results (without 'reruns' in log), by default is not used.
-- `--hide-rerun-details` - hide rerun details in the log ('RERUNS' section in terminal, by default is not used.
+- `--hide-rerun-details` - hide rerun details in the log ('RERUNS' section in terminal), by default is not used.
 
 ```bash
 PYTHONPATH=. pytest -s tests -p pytest_rerunclassfailures --rerun-class-max=3 --rerun-delay=1 --rerun-show-only-last

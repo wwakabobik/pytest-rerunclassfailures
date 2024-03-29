@@ -10,7 +10,7 @@ src-dir = "src"
 
 [project]
 name = "pytest-rerunclassfailures"
-version = "0.0.5"
+version = "0.1.0"
 keywords = ["pytest", "pytest-rerunclassfailures", "pytest-plugin", "testing", "qa", "failures", "flacky"]
 authors = [
   { name="Iliya Vereshchagin", email="i.vereshchagin@gmail.com" },
