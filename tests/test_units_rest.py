@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from _pytest.terminal import TerminalReporter
 
-from pytest_rerunclassfailures.pytest_rerunclassfailures import RerunClassPlugin  # type: ignore
+from pytest_rerunclassfailures import RerunClassPlugin  # type: ignore
 
 
 @pytest.fixture
