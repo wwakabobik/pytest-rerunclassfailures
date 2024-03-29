@@ -5,7 +5,7 @@ import pytest
 
 def test_class_attributes_non_init(run_default_tests):  # pylint: disable=W0613
     """
-    This test check test with the same class name in the module will be rerun correctly
+    This test check test attributes that are not initialized in the class
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function
@@ -20,7 +20,7 @@ def test_class_attributes_non_init(run_default_tests):  # pylint: disable=W0613
 
 def test_class_attributes_function_scope_fixture(run_default_tests):  # pylint: disable=W0613
     """
-    This test check test with the same class name in the module will be rerun correctly
+    This test check attribute are set by the fixture in the function scope
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function
@@ -35,7 +35,7 @@ def test_class_attributes_function_scope_fixture(run_default_tests):  # pylint: 
 
 def test_class_attributes_ext_function_scope_fixture(run_default_tests):  # pylint: disable=W0613
     """
-    This test check test with the same class name in the module will be rerun correctly
+    This test check attribute are set by the fixture in the function scope (outside of class)
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function
@@ -50,7 +50,7 @@ def test_class_attributes_ext_function_scope_fixture(run_default_tests):  # pyli
 
 def test_class_attributes_class_scope_fixture(run_default_tests):  # pylint: disable=W0613
     """
-    This test check test with the same class name in the module will be rerun correctly
+    This test check attribute are set by the fixture in the class scope
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function
@@ -65,7 +65,7 @@ def test_class_attributes_class_scope_fixture(run_default_tests):  # pylint: dis
 
 def test_class_attributes_list_handling(run_default_tests):  # pylint: disable=W0613
     """
-    This test check test with the same class name in the module will be rerun correctly
+    This test check that list type attributes are handled correctly
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function
@@ -80,7 +80,7 @@ def test_class_attributes_list_handling(run_default_tests):  # pylint: disable=W
 
 def test_class_attributes_dict_handling(run_default_tests):  # pylint: disable=W0613
     """
-    This test check test with the same class name in the module will be rerun correctly
+    This test check that dict type attributes are handled correctly
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function
@@ -95,7 +95,7 @@ def test_class_attributes_dict_handling(run_default_tests):  # pylint: disable=W
 
 def test_class_attributes_function_params(run_default_tests):  # pylint: disable=W0613
     """
-    This test check test with the same class name in the module will be rerun correctly
+    This test check function parameters are handled correctly
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function
@@ -111,7 +111,7 @@ def test_class_attributes_function_params(run_default_tests):  # pylint: disable
 @pytest.mark.xfail(reason="This test is expected to fail due to fixtures not reinitialized")
 def test_class_attributes_function_fixtures(run_default_tests):  # pylint: disable=W0613
     """
-    This test check test with the same class name in the module will be rerun correctly
+    This test check params obtained or set by fixtures are handled correctly
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function
@@ -122,3 +122,19 @@ def test_class_attributes_function_fixtures(run_default_tests):  # pylint: disab
     assert output.count("PASSED") == 2
     assert " 1 failed, 2 passed, 3 rerun in " in output
     assert "test_function_fixtures_attribute_forced_failure FAILED" in output
+
+
+def test_class_attributes_unpickable(run_default_tests):  # pylint: disable=W0613
+    """
+    This test check that unpickleable attributes are handled correctly
+
+    :param run_default_tests: fixture to run pytest with the plugin and default arguments
+    :type run_default_tests: function
+    """
+    return_code, output = run_default_tests("tests/test_source/test_unpickleable_attributes.py")
+    assert return_code == 1
+    assert output.count("RERUN") == 2
+    assert output.count("PASSED") == 1
+    assert " 1 failed, 1 passed, 2 rerun in " in output
+    assert "test_unpickleable_attributes_initial PASSED [ 50%]" in output
+    assert "test_unpickleable_attributes_fail FAILED [100%]" in output
