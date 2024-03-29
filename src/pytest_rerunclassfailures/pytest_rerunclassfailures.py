@@ -140,7 +140,9 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         if parent_class.name not in self.rerun_classes[module]:
             self.rerun_classes[module][parent_class.name] = {}  # to store class run results
         else:
-            self.logger.debug("Node %s was already executed for % class, reporting rest", item.nodeid, parent_class.name)
+            self.logger.debug(
+                "Node %s was already executed for % class, reporting rest", item.nodeid, parent_class.name
+            )
             self._report_run(item, self.rerun_classes[module][parent_class.name])  # report the rest of the results
             return True
 
@@ -331,12 +333,12 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         """
         Process the reports.
 
-        :param class_name: class name
-        :type class_name: dict
+        :param test_class: dict with test class test results (including reruns)
+        :type test_class: dict
         :return: None
         :rtype: None
         """
-        self.logger.debug("Preparing reports before publication", test_class)
+        self.logger.debug("Preparing reports before publication")
         for sibling, reruns in test_class.items():
             if len(reruns) > 1:
                 if self.only_last:
