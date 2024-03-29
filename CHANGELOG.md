@@ -34,3 +34,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added missed typing for plugin functions and their arguments
 - Add terminal reporter for reruns
 - Added xdist for package testing
+- Add more debug logging

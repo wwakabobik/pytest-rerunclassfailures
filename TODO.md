@@ -1,3 +1,2 @@
 - Call class-scope fixtures while recreating class (and, thus, teardown)
-- Add rerun summary
 - Add unit testing (achieve ~100% coverage)
