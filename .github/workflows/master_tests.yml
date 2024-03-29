@@ -26,9 +26,11 @@ jobs:
         pip install pytest-ordering
         pip install pytest-order
         pip install pytest-cov
+    - name: Add 'src' to PYTHONPATH
+      run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/src:." >> $GITHUB_ENV
     - name: Execute tests
       id: tests
-      run: PYTHONPATH=. pytest tests -n=auto --dist=loadfile --order-scope=module --cov=src/pytest_rerunclassfailures --cov-report=term --cov-report=xml:coverage.xml --cov-report=html
+      run: pytest tests -n=auto --dist=loadfile --order-scope=module --cov=src/pytest_rerunclassfailures --cov-report=term --cov-report=xml:coverage.xml --cov-report=html
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
