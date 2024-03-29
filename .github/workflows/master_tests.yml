@@ -27,4 +27,4 @@ jobs:
         pip install pytest-order
     - name: Execute tests
       id: tests
-      run: PYTHONPATH=. pytest tests
+      run: PYTHONPATH=. pytest tests -n=auto --dist=loadfile --order-scope=module
