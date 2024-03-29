@@ -105,8 +105,9 @@ def plugin_delay(request: FixtureRequest, run_tests_with_plugin) -> tuple:  # py
         f"--rerun-class-max={choice((True, None, '', 'abc'))}",
         f"--rerun-show-only-last={choice((True, 0.5, None, '', 'abc'))}",
         f"--rerun-delay={choice((True, None, '', 'abc'))}",
+        f"--hide-rerun-details={choice((True, 0.5, None, '', 'abc'))}",
     ],
-    ids=["incorrect", "show_only_last", "delay"],
+    ids=["incorrect_max", "show_only_last", "delay", "hide_details"],
 )
 def plugin_invalid_arguments(request: FixtureRequest, run_tests_with_plugin) -> tuple:  # pylint: disable=W0621
     """
@@ -217,9 +218,10 @@ def test_arguments_rerun_section_shown(run_tests_with_plugin):  # pylint: disabl
     assert output.count("tests/test_source/test_always_fails.py:9: in test_always_fail") == 2
     assert output.count("    assert False") == 2
     assert output.count("E   assert False") == 2
+    assert " 1 failed, 1 rerun in " in output
 
 
-def test_arguments_rerun_section_hidden(run_tests_with_plugin):  # pylint: disable=W0621
+def test_arguments_rerun_section_hidden_flag(run_tests_with_plugin):  # pylint: disable=W0621
     """
     Test that the plugin hides RERUNS section when the argument is passed.
 
@@ -229,10 +231,29 @@ def test_arguments_rerun_section_hidden(run_tests_with_plugin):  # pylint: disab
     """
     args = ["--rerun-class-max=1", "--hide-rerun-details"]
     error_code, output = run_tests_with_plugin("tests/test_source/test_always_fails.py", args)
-    print(output)
     assert error_code == 1
     assert "= RERUNS =" not in output
     assert "RERUN tests/test_source/test_always_fails.py::TestAlwaysFail::test_always_fail" not in output
     assert output.count("tests/test_source/test_always_fails.py:9: in test_always_fail") == 1
     assert output.count("    assert False") == 1
     assert output.count("E   assert False") == 1
+    assert "1 failed, 1 rerun in " in output
+
+
+def test_arguments_rerun_section_hidden_no_data(run_tests_with_plugin):  # pylint: disable=W0621
+    """
+    Test that the plugin hides RERUNS section when no reruns are performed.
+
+    :param run_tests_with_plugin: fixture to run pytest with the plugin
+    :type run_tests_with_plugin: function
+    :return: none
+    """
+    args = ["--rerun-class-max=1"]
+    error_code, output = run_tests_with_plugin("tests/test_source/test_always_pass.py", args)
+    assert error_code == 0
+    assert "= RERUNS =" not in output
+    assert "RERUN tests/test_source/test_always_fails.py::TestAlwaysFail::test_always_fail" not in output
+    assert output.count("tests/test_source/test_always_fails.py:9: in test_always_fail") == 0
+    assert output.count("    assert False") == 0
+    assert output.count("E   assert False") == 0
+    assert " 1 passed in " in output
