@@ -35,7 +35,7 @@ Other options you may use:
 - `--rerun-class-max` - number of reruns for the class. Default is 0.
 - `--rerun-delay` - delay between reruns in seconds. Default is 0.5.
 - `--rerun-show-only-last` - show only last rerun results (without 'reruns' in log), by default is not used.
-- `--hide-rerun-details` - hide rerun details in the log ('RERUNS' section in terminal, by default is not used.
+- `--hide-rerun-details` - hide rerun details in the log ('RERUNS' section in terminal), by default is not used.
 
 ```bash
 PYTHONPATH=. pytest -s tests -p pytest_rerunclassfailures --rerun-class-max=3 --rerun-delay=1 --rerun-show-only-last
