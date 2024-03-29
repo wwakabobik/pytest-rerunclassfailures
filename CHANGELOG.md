@@ -40,3 +40,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Updated
 - README.md updated
+- Added more tests to achieve 100% coverage (including non-reachable code via mocks)
+- Added coverage collection and reporting
