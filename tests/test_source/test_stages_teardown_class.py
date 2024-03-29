@@ -6,7 +6,7 @@ import pytest
 class TestFailInClassTeardown:
     """This test checks that the plugin correctly handles failure at teardown stage (class)"""
 
-    @pytest.fixture(scope='class', autouse=True)
+    @pytest.fixture(scope="class", autouse=True)
     def class_teardown(self, request):
         """
         Teardown method that always fails
@@ -16,9 +16,11 @@ class TestFailInClassTeardown:
         :return: None
         :rtype: None
         """
+
         def finalizer():
             """Finalizer that always fails"""
             assert False, "Class teardown error"
+
         request.addfinalizer(finalizer)
 
     def test_teardown_pass(self):

@@ -6,7 +6,7 @@ import pytest
 class TestFailInFunctionTeardown:
     """This test checks that the plugin correctly handles failure at teardown stage (function)"""
 
-    @pytest.fixture(scope='function')
+    @pytest.fixture(scope="function")
     def teardown(self, request):
         """
         Teardown method that always fails
@@ -16,9 +16,11 @@ class TestFailInFunctionTeardown:
         :return: None
         :rtype: None
         """
+
         def finalizer():
             """Finalizer that always fails"""
             assert False, "Teardown error"
+
         request.addfinalizer(finalizer)
 
     def test_teardown_pass(self, teardown):  # pylint: disable=unused-argument

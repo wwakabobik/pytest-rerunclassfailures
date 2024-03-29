@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from _pytest.terminal import TerminalReporter
 
-from src.pytest_rerunclassfailures.pytest_rerunclassfailures import RerunClassPlugin
+from src.pytest_rerunclassfailures.pytest_rerunclassfailures import RerunClassPlugin  # type: ignore
 
 
 @pytest.fixture
@@ -22,12 +22,14 @@ def mock_pytest_config() -> MagicMock:
 
 
 @pytest.fixture
-def rerun_class_plugin(mock_pytest_config: MagicMock) -> RerunClassPlugin:
+def rerun_class_plugin(mock_pytest_config: MagicMock) -> RerunClassPlugin:  # pylint: disable=W0621
     """
     Fixture for creating an instance of RerunClassPlugin
 
     :param mock_pytest_config: mock of pytest.Config
+    :type mock_pytest_config: MagicMock
     :return: instance of RerunClassPlugin
+    :rtype: RerunClassPlugin
     """
     plugin = RerunClassPlugin(config=mock_pytest_config)
     plugin.hide_terminal_output = False
@@ -35,7 +37,7 @@ def rerun_class_plugin(mock_pytest_config: MagicMock) -> RerunClassPlugin:
     return plugin
 
 
-def test_unit_previousfailed_removed_at_teardown(rerun_class_plugin):  # pylint: disable=redefined-outer-name
+def test_unit_previousfailed_removed_at_teardown(rerun_class_plugin):  # pylint: disable=W0621
     """
     Test that the _previousfailed attribute is removed from the test class
 
@@ -59,7 +61,7 @@ def test_unit_previousfailed_removed_at_teardown(rerun_class_plugin):  # pylint:
     assert result_siblings is siblings_mock, "The siblings should be returned as is"
 
 
-def test_unit_pytest_terminal_summary_with_tuple(rerun_class_plugin, mock_pytest_config):
+def test_unit_pytest_terminal_summary_with_tuple(rerun_class_plugin, mock_pytest_config):  # pylint: disable=W0621
     """
     Test that the pytest_terminal_summary method works correctly with tuple longrepr
 

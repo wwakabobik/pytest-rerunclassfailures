@@ -16,9 +16,11 @@ class TestFailInClassTeardownPure:
         :return: None
         :rtype: None
         """
+
         def finalizer():
             """Finalizer that always fails"""
             assert False, "Class teardown error"
+
         request.addfinalizer(finalizer)
 
     def test_teardown_pass(self):
