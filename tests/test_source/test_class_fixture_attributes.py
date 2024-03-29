@@ -15,7 +15,7 @@ def class_fixture(request):
 
 @pytest.mark.usefixtures("class_fixture")
 class TestWithClassScopeFixtureAttributes:
-    """Test class with attributes set by function-scope fixtures"""
+    """Test class with attributes set by class-scope fixtures"""
 
     def test_class_fixture_attribute_initial(self):
         """Test class scope fixture attribute at the beginning of the class"""

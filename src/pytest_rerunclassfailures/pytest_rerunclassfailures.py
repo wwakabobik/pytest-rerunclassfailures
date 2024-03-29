@@ -3,11 +3,12 @@
 import logging
 from copy import deepcopy
 from time import sleep
-from typing import Tuple
+from typing import Tuple, Literal, Union
 
 import pytest
 import _pytest.nodes
 from _pytest.terminal import TerminalReporter
+from _pytest._code.code import ExceptionInfo, TerminalRepr  # pylint: disable=protected-access
 from _pytest.config import Config
 from _pytest.reports import TestReport
 from _pytest.runner import runtestprotocol, pytest_runtest_protocol
@@ -72,6 +73,44 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         self.logger = logging.getLogger("pytest")
         self.logger.debug("pytest-rerunclassfailures plugin initialized!")
 
+    @staticmethod
+    def _generate_fake_report(
+            nodeid: str,
+            longrepr: Union[None, ExceptionInfo[BaseException], Tuple[str, int, str], str, TerminalRepr],
+            sections: list,
+            location: tuple,
+            outcome: Literal["passed", "failed", "skipped"]
+    ) -> TestReport:
+        """
+        Generate a fake report for the skipped or error test.
+        :param nodeid: node id
+        :type nodeid: str
+        :param longrepr: longrepr
+        :type longrepr: Union[None, ExceptionInfo[BaseException], Tuple[str, int, str], str, TerminalRepr]
+        :param sections: sections
+        :type sections: list
+        :param location: location
+        :type location: tuple
+        :param outcome: outcome
+        :type outcome: Literal["passed", "failed", "skipped"]
+        :return: fake report
+        :rtype: TestReport
+        """
+        fake_report = TestReport(
+            nodeid=nodeid,
+            location=location,
+            keywords={},
+            outcome=outcome,
+            longrepr=longrepr,
+            when="call",
+            sections=sections,
+            duration=0.0,
+            start=0.0,
+            stop=0.0,
+            user_properties=[],
+        )
+        return fake_report
+
     def _report_run(self, item: _pytest.nodes.Item, test_class: dict) -> None:
         """
         Report the class test run.
@@ -95,19 +134,9 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
             file, _, test_with_class = item.nodeid.partition("::")
             class_name, _, test_name = test_with_class.partition("::")
             test = f"{class_name}.{test_name}" if class_name and test_name else class_name
-            fake_report = TestReport(
-                nodeid=item.nodeid,
-                location=(file, 0, test),
-                keywords={},
-                outcome="skipped",
-                longrepr=(test, 0, "Skipping test due to class execution was aborted during rerun"),
-                when="call",
-                sections=[("Reason", "Skipping test due to class execution was aborted during rerun")],
-                duration=0.0,
-                start=0.0,
-                stop=0.0,
-                user_properties=[],
-            )
+            longrepr = (test, 0, "Skipping test due to class execution was aborted during rerun")
+            sections = [("Reason", "Skipping test due to class execution was aborted during rerun")]
+            fake_report = self._generate_fake_report(item.nodeid, longrepr, sections, item.location, "skipped")
             self.logger.debug("Reporting test node was skipped %s", item.nodeid)
             item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
             item.ihook.pytest_runtest_logreport(report=fake_report)
@@ -181,7 +210,10 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
         self._process_reports(self.rerun_classes[module][parent_class.name])
         self._report_run(item, self.rerun_classes[module][parent_class.name])
-        item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
+        try:
+            item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
+        except Exception as error:  # pylint: disable=broad-except
+            self.logger.warning("\nException during teardown: %s: %s", type(error).__name__, error)
         return True
 
     def _teardown_rerun(
@@ -205,7 +237,10 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         # Clean class setup state stack
         item.session._setupstate.stack = {}  # pylint: disable=protected-access
         # Teardown the class and emulate recreation of it
-        item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
+        try:
+            item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
+        except Exception as error:  # pylint: disable=broad-except
+            self.logger.warning("\nException during teardown: %s: %s", type(error).__name__, error)
         # We can't replace the class because session-scoped fixtures will be lost
         parent_class, siblings = self._recreate_test_class(parent_class, siblings, initial_state)
         item.parent = parent_class  # ensure that we're using updated class
@@ -283,6 +318,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         """
         Remove non-initial attributes.
 
+        TBD: Currently, we can't remove them because we're not re-call the fixtures.
+
         :param parent: pytest class
         :type parent: pytest.Class
         :param initial_state: parent initial state
@@ -290,17 +327,19 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :return: None
         :rtype: None
         """
-        self.logger.debug("Removing non-default attributes from %s", parent.name)
-        for attr_name in dir(parent.obj):
-            if (
+        self.logger.debug("Removing non-default attributes from %s", parent.name)  # pragma: no cover
+        for attr_name in dir(parent.obj):  # pragma: no cover
+            if (  # pragma: no cover
                 not callable(getattr(parent.obj, attr_name))
                 and not attr_name.startswith("__")
                 and not attr_name.startswith("___")
                 and attr_name != "pytestmark"
                 and attr_name not in initial_state
             ):
-                self.logger.debug("Removing non-default attribute %s from %s", attr_name, parent.name)
-                delattr(parent.obj, attr_name)
+                self.logger.debug(  # pragma: no cover
+                    "Removing non-default attribute %s from %s", attr_name, parent.name
+                )
+                delattr(parent.obj, attr_name)  # pragma: no cover
 
     def _recreate_test_class(self, test_class: pytest.Class, siblings: list, initial_state: dict) -> tuple:
         """
@@ -316,7 +355,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :rtype: tuple
         """
         self.logger.debug("Recreating class %s", test_class.name)
-        # Drop a previous failed flag only when we are going to rerun the test
+        # Drop a previous failed flag only when we are going to rerun the test, actually should never happen
         if hasattr(test_class, "_previousfailed"):
             delattr(test_class, "_previousfailed")
 
@@ -346,6 +385,12 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                 else:
                     for rerun in reruns[:-1]:
                         for report in rerun:
+                            if report.outcome == "failed" and report.when == "setup":
+                                rerun.append(
+                                    self._generate_fake_report(
+                                        report.nodeid, report.longrepr, report.sections, report.location, "rerun"
+                                    )
+                                )
                             report.outcome = "rerun"
 
     def _remove_cached_results_from_failed_fixtures(self, item: _pytest.nodes.Item) -> None:

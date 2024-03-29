@@ -51,6 +51,17 @@ class TestClassWithUnpickleableObject:
     context_manager = my_context_manager()
     custom_getattr = CustomGetattr()
     function = my_function
+    # Save original attributes to check them later
+    ___original = {
+        "unpickleable_attr": unpickleable_attr,
+        "file": file,
+        "sock": sock,
+        "lock": lock,
+        "generator": generator,
+        "context_manager": context_manager,
+        "custom_getattr": custom_getattr,
+        "function": function,
+    }
 
     def __del__(self):
         """Close file and socket when object is deleted"""
@@ -75,6 +86,31 @@ class TestClassWithUnpickleableObject:
         assert isinstance(self.context_manager, contextlib._GeneratorContextManager)  # pylint: disable=W0212
         assert isinstance(self.custom_getattr, self.CustomGetattr)
         assert isinstance(self.function, type(self.my_function))
+        # Check that the attributes are same
+        assert self.file is self.___original["file"]
+        assert self.sock is self.___original["sock"]
+        assert self.lock is self.___original["lock"]
+        assert self.generator is self.___original["generator"]
+        assert self.context_manager is self.___original["context_manager"]
+
+    def test_unpickleable_attributes_changed(self):
+        """Test unpickleable attribute after changing attribute value"""
+        # Change attributes
+        self.unpickleable_attr = Mock()
+        self.file = open(__file__, "r", encoding="utf-8")
+        self.sock = socket(AF_INET, SOCK_STREAM)
+        self.lock = Lock()
+        self.generator = (i for i in range(10))
+        self.context_manager = self.my_context_manager
+        self.custom_getattr = self.CustomGetattr()
+        self.function = self.my_function
+        # Check attributes are updated
+        assert self.unpickleable_attr is not self.___original["unpickleable_attr"]
+        assert self.file is not self.___original["file"]
+        assert self.sock is not self.___original["sock"]
+        assert self.lock is not self.___original["lock"]
+        assert self.generator is not self.___original["generator"]
+        assert self.context_manager is not self.___original["context_manager"]
 
     def test_unpickleable_attributes_fail(self):
         """Test unpickleable attribute forced failure"""

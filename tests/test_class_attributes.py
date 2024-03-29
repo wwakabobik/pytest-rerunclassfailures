@@ -133,8 +133,9 @@ def test_class_attributes_unpickable(run_default_tests):  # pylint: disable=W061
     """
     return_code, output = run_default_tests("tests/test_source/test_unpickleable_attributes.py")
     assert return_code == 1
-    assert output.count("RERUN") == 2
-    assert output.count("PASSED") == 1
-    assert " 1 failed, 1 passed, 2 rerun in " in output
-    assert "test_unpickleable_attributes_initial PASSED [ 50%]" in output
+    assert output.count("RERUN") == 3
+    assert output.count("PASSED") == 2
+    assert " 1 failed, 2 passed, 3 rerun in " in output
+    assert "test_unpickleable_attributes_initial PASSED [ 33%]" in output
+    assert "test_unpickleable_attributes_changed PASSED [ 66%]" in output
     assert "test_unpickleable_attributes_fail FAILED [100%]" in output
