@@ -12,8 +12,18 @@ from unittest.mock import Mock
 class TestClassWithUnpickleableObject:
     """Test class with unpickleable attributes"""
 
+    @staticmethod
+    def my_function() -> str:
+        """
+        Function for testing purposes
+
+        :return: my_function
+        :rtype: str
+        """
+        return "my_function"
+
     @contextmanager
-    def my_context_manager():
+    def my_context_manager():  # type:ignore  # pylint: disable=E0211
         """Context manager for testing purposes"""
         yield "context_manager"
 
@@ -40,6 +50,7 @@ class TestClassWithUnpickleableObject:
     generator = (i for i in range(10))
     context_manager = my_context_manager()
     custom_getattr = CustomGetattr()
+    function = my_function
 
     def __del__(self):
         """Close file and socket when object is deleted"""
@@ -60,9 +71,10 @@ class TestClassWithUnpickleableObject:
         assert isinstance(self.unpickleable_attr, Mock)
         assert isinstance(self.file, TextIOWrapper)
         assert isinstance(self.sock, socket)
-        #assert isinstance(self.lock, Lock)  # pylint: disable=W1116
+        assert hasattr(self.lock, "acquire") and callable(self.lock.acquire), "self.lock должен иметь метод acquire"
         assert isinstance(self.context_manager, contextlib._GeneratorContextManager)  # pylint: disable=W0212
         assert isinstance(self.custom_getattr, self.CustomGetattr)
+        assert isinstance(self.function, type(self.my_function))
 
     def test_unpickleable_attributes_fail(self):
         """Test unpickleable attribute forced failure"""
