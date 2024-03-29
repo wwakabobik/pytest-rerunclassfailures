@@ -9,7 +9,7 @@ import contextlib
 from unittest.mock import Mock
 
 
-class TestClassWithUnpickleableObject:
+class TestClassWithUnpickleableObject:  # pylint: disable=too-many-instance-attributes
     """Test class with unpickleable attributes"""
 
     @staticmethod
@@ -97,7 +97,7 @@ class TestClassWithUnpickleableObject:
         """Test unpickleable attribute after changing attribute value"""
         # Change attributes
         self.unpickleable_attr = Mock()
-        self.file = open(__file__, "r", encoding="utf-8")
+        self.file = open(__file__, "r", encoding="utf-8")  # pylint: disable=consider-using-with
         self.sock = socket(AF_INET, SOCK_STREAM)
         self.lock = Lock()
         self.generator = (i for i in range(10))

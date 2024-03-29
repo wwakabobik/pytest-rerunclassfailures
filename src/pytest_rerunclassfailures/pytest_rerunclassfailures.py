@@ -8,11 +8,11 @@ from typing import Tuple, Literal, Union
 import pytest
 import _pytest.nodes
 from _pytest.terminal import TerminalReporter
-from _pytest._code.code import ExceptionInfo, TerminalRepr  # pylint: disable=protected-access
 from _pytest.config import Config
+from _pytest.config.argparsing import Parser
 from _pytest.reports import TestReport
 from _pytest.runner import runtestprotocol, pytest_runtest_protocol
-from _pytest.config.argparsing import Parser
+from _pytest._code.code import ExceptionInfo, TerminalRepr  # pylint: disable=protected-access
 
 
 def pytest_addoption(parser: Parser) -> None:
@@ -75,11 +75,11 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def _generate_fake_report(
-            nodeid: str,
-            longrepr: Union[None, ExceptionInfo[BaseException], Tuple[str, int, str], str, TerminalRepr],
-            sections: list,
-            location: tuple,
-            outcome: Literal["passed", "failed", "skipped"]
+        nodeid: str,
+        longrepr: Union[None, ExceptionInfo[BaseException], Tuple[str, int, str], str, TerminalRepr],
+        sections: list,
+        location: tuple,
+        outcome: Literal["passed", "failed", "skipped", "rerun", "error", "xfailed", "xpassed"],
     ) -> TestReport:
         """
         Generate a fake report for the skipped or error test.
@@ -92,7 +92,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :param location: location
         :type location: tuple
         :param outcome: outcome
-        :type outcome: Literal["passed", "failed", "skipped"]
+        :type outcome: Literal["passed", "failed", "skipped", "rerun", "error", "xfailed", "xpassed"]
         :return: fake report
         :rtype: TestReport
         """
@@ -100,7 +100,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
             nodeid=nodeid,
             location=location,
             keywords={},
-            outcome=outcome,
+            outcome=outcome,  # type: ignore
             longrepr=longrepr,
             when="call",
             sections=sections,
@@ -136,7 +136,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
             test = f"{class_name}.{test_name}" if class_name and test_name else class_name
             longrepr = (test, 0, "Skipping test due to class execution was aborted during rerun")
             sections = [("Reason", "Skipping test due to class execution was aborted during rerun")]
-            fake_report = self._generate_fake_report(item.nodeid, longrepr, sections, item.location, "skipped")
+            location = (file, 0, test)
+            fake_report = self._generate_fake_report(item.nodeid, longrepr, sections, location, "skipped")
             self.logger.debug("Reporting test node was skipped %s", item.nodeid)
             item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
             item.ihook.pytest_runtest_logreport(report=fake_report)
@@ -210,11 +211,23 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
         self._process_reports(self.rerun_classes[module][parent_class.name])
         self._report_run(item, self.rerun_classes[module][parent_class.name])
+        self._teardown_test_class(item)
+        return True
+
+    def _teardown_test_class(self, item: _pytest.nodes.Item) -> None:
+        """
+        Teardown the test class.
+
+        :param item: pytest item
+        :type item: _pytest.nodes.Item
+        :return: None
+        :rtype: None
+        """
+        self.logger.debug("Teardown test class %s", item.nodeid)
         try:
             item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
         except Exception as error:  # pylint: disable=broad-except
             self.logger.warning("\nException during teardown: %s: %s", type(error).__name__, error)
-        return True
 
     def _teardown_rerun(
         self, item: _pytest.nodes.Item, parent_class: pytest.Class, siblings: list, initial_state: dict
@@ -236,11 +249,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         self._remove_cached_results_from_failed_fixtures(item)
         # Clean class setup state stack
         item.session._setupstate.stack = {}  # pylint: disable=protected-access
-        # Teardown the class and emulate recreation of it
-        try:
-            item.session._setupstate.teardown_exact(None)  # pylint: disable=protected-access
-        except Exception as error:  # pylint: disable=broad-except
-            self.logger.warning("\nException during teardown: %s: %s", type(error).__name__, error)
+        self._teardown_test_class(item)  # Teardown the class and emulate recreation of it
         # We can't replace the class because session-scoped fixtures will be lost
         parent_class, siblings = self._recreate_test_class(parent_class, siblings, initial_state)
         item.parent = parent_class  # ensure that we're using updated class
@@ -385,13 +394,22 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                 else:
                     for rerun in reruns[:-1]:
                         for report in rerun:
-                            if report.outcome == "failed" and report.when == "setup":
-                                rerun.append(
-                                    self._generate_fake_report(
-                                        report.nodeid, report.longrepr, report.sections, report.location, "rerun"
-                                    )
-                                )
+                            dummy_report = self._check_and_add_dummy_rerun_if_needed(report)
+                            rerun.append(dummy_report) if dummy_report else None  # pylint: disable=W0106
                             report.outcome = "rerun"
+
+    def _check_and_add_dummy_rerun_if_needed(self, report: TestReport) -> Union[None, TestReport]:
+        """
+        Check and add a dummy rerun report if needed.
+
+        :param report: test report
+        :type report: TestReport
+        :return: None or TestReport
+        :rtype: Union[None, TestReport]
+        """
+        if report.outcome == "failed" and report.when == "setup":
+            return self._generate_fake_report(report.nodeid, report.longrepr, report.sections, report.location, "rerun")
+        return None
 
     def _remove_cached_results_from_failed_fixtures(self, item: _pytest.nodes.Item) -> None:
         """

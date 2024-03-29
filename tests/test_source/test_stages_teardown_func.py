@@ -21,7 +21,7 @@ class TestFailInFunctionTeardown:
             assert False, "Teardown error"
         request.addfinalizer(finalizer)
 
-    def test_teardown_pass(self, teardown):
+    def test_teardown_pass(self, teardown):  # pylint: disable=unused-argument
         """This test should pass"""
         assert True
 
