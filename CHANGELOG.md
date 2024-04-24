@@ -42,3 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README.md updated
 - Added more tests to achieve 100% coverage (including non-reachable code via mocks)
 - Added coverage collection and reporting
+
+## [0.1.1] - 2024-04-24
+
+### Fixed
+- Fixed proper setting of result outcome for reruns in case of different rerun length
+
+### Updated
+- Requirements bumped to the latest versions
