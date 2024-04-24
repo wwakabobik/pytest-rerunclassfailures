@@ -387,12 +387,14 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :rtype: None
         """
         self.logger.debug("Preparing reports before publication")
+        max_reruns = max(len(reruns) for reruns in test_class.values())
+
         for sibling, reruns in test_class.items():
-            if len(reruns) > 1:
-                if self.only_last:
-                    test_class[sibling] = [reruns[-1]]
-                else:
-                    for rerun in reruns[:-1]:
+            if self.only_last:
+                test_class[sibling] = [reruns[-1]] if len(reruns) == max_reruns else []
+            else:
+                for rerun_index, rerun in enumerate(reruns):
+                    if rerun_index < max_reruns - 1:
                         for report in rerun:
                             dummy_report = self._check_and_add_dummy_rerun_if_needed(report)
                             rerun.append(dummy_report) if dummy_report else None  # pylint: disable=W0106
