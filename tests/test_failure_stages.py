@@ -1,5 +1,7 @@
 """This test checks that the plugin correctly handles failure at any stage of the test"""
 
+import pytest
+
 
 def test_failure_stages_setup(run_default_tests):  # pylint: disable=W0613
     """
@@ -62,7 +64,11 @@ def test_failure_stages_teardown_class_fails(run_default_tests):  # pylint: disa
     assert output.count("ERROR ") == 0
     assert output.count("FAILED ") == 2
     assert " 1 failed, 1 passed, 2 rerun in " in output
-    assert "Exception during teardown: AssertionError: Class teardown error" in output
+    print(output)
+    if tuple(map(int, pytest.__version__.split("."))) >= (8, 2, 0):
+        assert "Exception during teardown: AssertionError: Class teardown error" not in output
+    else:
+        assert "Exception during teardown: AssertionError: Class teardown error" in output
 
 
 def test_failure_stages_teardown_class_without_aborting(run_default_tests):  # pylint: disable=W0613
