@@ -1,6 +1,6 @@
 """Test against the different command-line arguments passed to the plugin."""
 
-from os import environ
+from os import environ, pathsep
 from os.path import abspath
 from random import randint, choice
 from re import findall
@@ -36,7 +36,7 @@ def run_tests_with_plugin(request: FixtureRequest):  # pylint: disable=unused-ar
         return_code = 0
         try:
             env = environ.copy()
-            env["PYTHONPATH"] = "./src/pytest_rerunclassfailures"
+            env["PYTHONPATH"] = "./src/pytest_rerunclassfailures" + pathsep + abspath("tests/_cov_bootstrap")
             env["COVERAGE_PROCESS_START"] = abspath("pyproject.toml")
             output = check_output(
                 ["pytest", test_path, "-p", "pytest_rerunclassfailures"] + args,
