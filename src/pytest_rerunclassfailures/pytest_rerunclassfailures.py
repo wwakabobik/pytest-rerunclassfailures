@@ -3,16 +3,26 @@
 import logging
 from copy import deepcopy
 from time import sleep
-from typing import Tuple, Literal, Union
+from typing import Tuple, Literal, Optional, Union
 
 import pytest
 import _pytest.nodes
+from pydantic import BaseModel, Field, ValidationError
 from _pytest.terminal import TerminalReporter
 from _pytest.config import Config
 from _pytest.config.argparsing import Parser
 from _pytest.reports import TestReport
-from _pytest.runner import runtestprotocol, pytest_runtest_protocol
+from _pytest.runner import runtestprotocol
 from _pytest._code.code import ExceptionInfo, TerminalRepr  # pylint: disable=protected-access
+
+
+class RerunClassOptions(BaseModel):  # pylint: disable=too-few-public-methods
+    """Validated CLI options for the rerun-class-failures plugin."""
+
+    rerun_max: int = Field(ge=0)
+    delay: float = Field(ge=0)
+    only_last: bool
+    hide_terminal_output: bool
 
 
 def pytest_addoption(parser: Parser) -> None:
@@ -50,6 +60,19 @@ def pytest_addoption(parser: Parser) -> None:
         default=False,
         help="hide rerun details in terminal output if passed",
     )
+    group.addoption(
+        "--allow-rerunfailures",
+        action="store_true",
+        dest="allow_rerunfailures",
+        default=False,
+        help=(
+            "silence the startup message about pytest-rerunfailures also being active "
+            "(the suite runs either way). Standalone (non-class) tests cooperate "
+            "normally; a pytest-rerunfailures marker (or --reruns) on a method inside a "
+            "class this plugin reruns is superseded by the class-level rerun and never "
+            "applies on its own"
+        ),
+    )
 
 
 class RerunClassPlugin:  # pylint: disable=too-few-public-methods
@@ -64,13 +87,24 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :return: None
         :rtype: None
         """
-        self.rerun_classes: dict = {}  # test classed already rerun
-        self.rerun_max = config.getoption("--rerun-class-max")  # how many times to rerun the class
-        self.rerun_max = self.rerun_max + 1 if self.rerun_max > 0 else 0  # increment by 1 to include the initial run
-        self.delay = config.getoption("--rerun-delay")  # delay between reruns in seconds
-        self.only_last = config.getoption("--rerun-show-only-last")  # rerun only the last failed test
-        self.hide_terminal_output = config.getoption("--hide-rerun-details")  # hide rerun details in terminal output
         self.logger = logging.getLogger("pytest")
+        self.rerun_classes: dict = {}  # test classed already rerun
+        try:
+            options = RerunClassOptions(
+                rerun_max=config.getoption("--rerun-class-max"),
+                delay=config.getoption("--rerun-delay"),
+                only_last=config.getoption("--rerun-show-only-last"),
+                hide_terminal_output=config.getoption("--hide-rerun-details"),
+            )
+        except ValidationError as error:
+            self.logger.warning("pytest-rerunclassfailures: invalid option value(s): %s", error)
+            raise pytest.UsageError(f"pytest-rerunclassfailures: invalid option value(s):\n{error}") from error
+        self.logger.debug("pytest-rerunclassfailures options validated: %s", options)
+        # increment by 1 to include the initial run
+        self.rerun_max = options.rerun_max + 1 if options.rerun_max > 0 else 0
+        self.delay = options.delay  # delay between reruns in seconds
+        self.only_last = options.only_last  # rerun only the last failed test
+        self.hide_terminal_output = options.hide_terminal_output  # hide rerun details in terminal output
         self.logger.debug("pytest-rerunclassfailures plugin initialized!")
 
     @staticmethod
@@ -146,7 +180,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
     @pytest.hookimpl(tryfirst=True)
     def pytest_runtest_protocol(
         self, item: _pytest.nodes.Item, nextitem: _pytest.nodes.Item  # pylint: disable=W0613
-    ) -> bool:
+    ) -> Optional[bool]:
         """
         Run the test protocol.
 
@@ -154,16 +188,17 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :type item: _pytest.nodes.Item
         :param nextitem: next pytest item
         :type nextitem: _pytest.nodes.Item
-        :return: True if any actions of plugin performed, False otherwise
-        :rtype: bool
+        :return: True if this plugin handled the item, None to defer to other
+                 pytest_runtest_protocol hookimpls (pytest core's default, or another
+                 rerun plugin), False is never returned
+        :rtype: Optional[bool]
         """
         parent_class = item.getparent(pytest.Class)
         module = item.nodeid.split("::")[0]
 
         if item.cls is None or self.rerun_max <= 0 or not parent_class:  # type: ignore
-            self.logger.debug("Ignoring %s (node have no parent class)", item.nodeid)
-            pytest_runtest_protocol(item, nextitem=nextitem)
-            return False  # ignore non-class items or plugin disabled
+            self.logger.debug("Deferring %s to other pytest_runtest_protocol hookimpls", item.nodeid)
+            return None  # let pytest core / other rerun plugins handle non-class items
 
         if module not in self.rerun_classes:
             self.rerun_classes[module] = {}
@@ -171,7 +206,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
             self.rerun_classes[module][parent_class.name] = {}  # to store class run results
         else:
             self.logger.debug(
-                "Node %s was already executed for % class, reporting rest", item.nodeid, parent_class.name
+                "Node %s was already executed for %s class, reporting rest", item.nodeid, parent_class.name
             )
             self._report_run(item, self.rerun_classes[module][parent_class.name])  # report the rest of the results
             return True
@@ -245,11 +280,8 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :type initial_state: dict
         :return: tuple
         """
-        # Drop failed fixtures and cache
-        self._remove_cached_results_from_failed_fixtures(item)
-        # Clean class setup state stack
-        item.session._setupstate.stack = {}  # pylint: disable=protected-access
-        self._teardown_test_class(item)  # Teardown the class and emulate recreation of it
+        # Genuinely tear down class/function-scope fixtures via pytest's own finalizer chain
+        self._teardown_class_and_below(parent_class, item)
         # We can't replace the class because session-scoped fixtures will be lost
         parent_class, siblings = self._recreate_test_class(parent_class, siblings, initial_state)
         item.parent = parent_class  # ensure that we're using updated class
@@ -325,9 +357,13 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
 
     def _remove_non_initial_attributes(self, parent: pytest.Class, initial_state: dict) -> None:
         """
-        Remove non-initial attributes.
-
-        TBD: Currently, we can't remove them because we're not re-call the fixtures.
+        Remove attributes that did not exist on the class before the rerun cycle began
+        (e.g. lazily created by a class-scope fixture or a test itself, such as
+        ``if not hasattr(request.cls, "user"): request.cls.user = ...``). Without this,
+        such an attribute survives untouched across reruns even though the fixture that
+        created it is genuinely re-invoked (see ``_teardown_class_and_below``), since its
+        own lazy-creation guard sees the stale attribute and skips recreating it - leaking
+        whatever state a previous, aborted attempt left it in.
 
         :param parent: pytest class
         :type parent: pytest.Class
@@ -336,19 +372,17 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :return: None
         :rtype: None
         """
-        self.logger.debug("Removing non-default attributes from %s", parent.name)  # pragma: no cover
-        for attr_name in dir(parent.obj):  # pragma: no cover
-            if (  # pragma: no cover
+        self.logger.debug("Removing non-default attributes from %s", parent.name)
+        for attr_name in dir(parent.obj):
+            if (
                 not callable(getattr(parent.obj, attr_name))
                 and not attr_name.startswith("__")
                 and not attr_name.startswith("___")
                 and attr_name != "pytestmark"
                 and attr_name not in initial_state
             ):
-                self.logger.debug(  # pragma: no cover
-                    "Removing non-default attribute %s from %s", attr_name, parent.name
-                )
-                delattr(parent.obj, attr_name)  # pragma: no cover
+                self.logger.debug("Removing non-default attribute %s from %s", attr_name, parent.name)
+                delattr(parent.obj, attr_name)
 
     def _recreate_test_class(self, test_class: pytest.Class, siblings: list, initial_state: dict) -> tuple:
         """
@@ -368,12 +402,18 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         if hasattr(test_class, "_previousfailed"):
             delattr(test_class, "_previousfailed")
 
-        # Remove non-initial attributes. BUT! currently we can't remove them because we're not re-call the fixtures
-        #  self._remove_non_initial_attributes(test_class, initial_state)
+        self._remove_non_initial_attributes(test_class, initial_state)
         # Load the original test class from the pytest Class object and propagate to the siblings
         self._set_parent_initial_state(test_class, initial_state)
         for i in range(len(siblings) - 1):
             siblings[i].parent = test_class
+            # Drop the memoized bound instance/method (Function._instance / Function._obj) so
+            # the next run gets a genuinely fresh instance via parent.newinstance(), instead of
+            # reusing the same instance (and any instance attributes it accumulated) across reruns
+            if hasattr(siblings[i], "_instance"):
+                delattr(siblings[i], "_instance")
+            if hasattr(siblings[i], "_obj"):
+                delattr(siblings[i], "_obj")
 
         return test_class, siblings
 
@@ -413,27 +453,49 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
             return self._generate_fake_report(report.nodeid, report.longrepr, report.sections, report.location, "rerun")
         return None
 
-    def _remove_cached_results_from_failed_fixtures(self, item: _pytest.nodes.Item) -> None:
+    def _teardown_class_and_below(self, parent_class: pytest.Class, item: _pytest.nodes.Item) -> None:
         """
-        Remove all cached_result attributes from every fixture.
+        Genuinely tear down the class (and its currently-open function-scope) level of
+        pytest's own SetupState stack, so function- and class-scope fixtures are actually
+        re-invoked on the next rerun via their real finalizers, instead of only having
+        request.cls attributes reset by the class-attribute snapshot mechanism.
 
-        :param item: pytest item
+        This pops entries directly off ``item.session._setupstate.stack`` and calls each
+        one's own registered finalizers (the exact same finalizers pytest itself would call
+        via ``SetupState.teardown_exact``), stopping as soon as we reach the class's parent
+        (module/session), which are deliberately left untouched: they may be shared with
+        content outside this rerun class/cycle, and tearing them down here would violate
+        their scope contract (see README "Known limitations").
+
+        This also correctly handles a fixture that failed during setup: pytest still
+        registers its finalizer in the ``finally`` branch of ``FixtureDef.execute()``
+        regardless of success, so popping it here calls the real ``FixtureDef.finish()``,
+        which is the only thing allowed to clear both ``cached_result`` and the fixture's
+        own internal ``_finalizers`` list together. Deliberately do NOT poke
+        ``cached_result`` manually anywhere else: ``FixtureDef.finish()`` treats
+        ``cached_result is None`` as "already finished, nothing to do" and returns without
+        touching ``_finalizers`` - manually nulling ``cached_result`` ahead of time breaks
+        that invariant and previously caused ``assert not self._finalizers`` to crash the
+        plugin on a subsequent rerun of a fixture that failed during setup.
+
+        :param parent_class: parent class, used to compute how far up the stack to pop
+        :type parent_class: pytest.Class
+        :param item: pytest item, used to reach the real session-wide setup state
         :type item: _pytest.nodes.Item
         :return: None
         :rtype: None
         """
-        self.logger.debug("Removing cached results from failed fixtures")
-        cached_result = "cached_result"
-        fixture_info = getattr(item, "_fixtureinfo", None)
-        if fixture_info:
-            for fixture_def_str in getattr(fixture_info, "name2fixturedefs", ()):
-                fixture_defs = fixture_info.name2fixturedefs[fixture_def_str]
-                for fixture_def in fixture_defs:
-                    if getattr(fixture_def, cached_result, None) is not None:
-                        _, _, err = getattr(fixture_def, cached_result)
-                        if err:  # Deleting cached results for only failed fixtures
-                            self.logger.debug("Removing cached result for %s", fixture_def)
-                            setattr(fixture_def, cached_result, None)
+        self.logger.debug("Tearing down class %s and below ahead of rerun", parent_class.name)
+        stack = item.session._setupstate.stack  # pylint: disable=protected-access
+        target_len = len(parent_class.listchain()) - 1  # keep everything above (and excluding) the class itself
+        while len(stack) > target_len:
+            _, (finalizers, _exc) = stack.popitem()
+            while finalizers:
+                fin = finalizers.pop()
+                try:
+                    fin()
+                except Exception as error:  # pylint: disable=broad-except
+                    self.logger.warning("\nException during teardown: %s: %s", type(error).__name__, error)
 
     def pytest_terminal_summary(
         self, terminalreporter: TerminalReporter, exitstatus: int, config: Config  # pylint: disable=unused-argument
@@ -471,6 +533,27 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                         terminalreporter._tw.line(str(rerun_test.longrepr))  # pylint: disable=W0212
 
 
+def _emit_config_warning(config: Config, message: str) -> None:
+    """
+    Emit a one-time informational message during ``pytest_configure``.
+
+    :param config: pytest config
+    :type config: pytest.Config
+    :param message: message to emit
+    :type message: str
+    :return: None
+    :rtype: None
+    """
+    if config.pluginmanager.is_blocked("warnings"):
+        # issue_config_time_warning is silently a no-op under -p no:warnings, and the
+        # terminal reporter isn't guaranteed registered yet at this point in configure,
+        # so fall back to a plain print - it needs no pytest subsystem to be ready and
+        # guarantees this is seen even with warnings disabled
+        print(f"\n{message}")
+    else:
+        config.issue_config_time_warning(pytest.PytestConfigWarning(message), stacklevel=2)
+
+
 def pytest_configure(config: Config) -> None:
     """
     Configure the plugin.
@@ -480,6 +563,30 @@ def pytest_configure(config: Config) -> None:
     :return: None
     :rtype: None
     """
-    if config.getoption("--rerun-class-max") > 0:
+    if config.getoption("--rerun-class-max") != 0:
+        if config.pluginmanager.has_plugin("rerunfailures") and not config.getoption("--allow-rerunfailures"):
+            _emit_config_warning(
+                config,
+                "pytest-rerunclassfailures: pytest-rerunfailures is also active. Both plugins "
+                "hook pytest_runtest_protocol; a pytest-rerunfailures marker (or --reruns) on a "
+                "method inside a class this plugin reruns is silently superseded by the "
+                "class-level rerun and never applies on its own. Standalone (non-class) tests "
+                "are unaffected and cooperate normally with pytest-rerunfailures. Pass "
+                "--allow-rerunfailures to silence this message once you've confirmed that's "
+                "acceptable for your test suite.",
+            )
+        if config.pluginmanager.has_plugin("xdist") and config.getoption("dist", default="no") == "load":
+            _emit_config_warning(
+                config,
+                "pytest-rerunclassfailures: pytest-xdist is active with --dist=load (its "
+                "default when -n/--numprocesses is passed without --dist). This does not "
+                "guarantee that every test method of a class lands on the same worker, so a "
+                "class rerun triggered on one worker may not see every sibling test, and "
+                "reported results can differ from a non-distributed run. Use "
+                "--dist=loadscope or --dist=loadfile so every test in a class always runs "
+                "on the same worker.",
+            )
+        # constructed (and validated) even for a negative value, so an out-of-range option
+        # surfaces a clear usage error instead of being silently treated as "disabled"
         rerun_plugin = RerunClassPlugin(config)
         config.pluginmanager.register(rerun_plugin, "pytest-rerunclassfailures")

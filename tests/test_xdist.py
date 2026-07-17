@@ -43,8 +43,11 @@ def test_xdist_two_nodes_one_class(run_default_tests):  # pylint: disable=W0613
     assert output.count("RERUN") == 2
     assert output.count("PASSED") == 1
     assert " 1 failed, 1 passed, 1 skipped, 2 rerun in " in output
-    assert output.count("[gw0] ") == 6
-    assert output.count("[gw1] ") == 0
+    # With a single class and --dist=loadscope, all its items land on one worker - but xdist
+    # doesn't guarantee *which* worker id gets it (depends on worker connection order), so accept
+    # either gw0 or gw1 taking all 6 lines rather than hardcoding one.
+    counts = {output.count("[gw0] "), output.count("[gw1] ")}
+    assert counts == {0, 6}
 
 
 def test_xdist_two_nodes_two_classes(run_default_tests):  # pylint: disable=W0613

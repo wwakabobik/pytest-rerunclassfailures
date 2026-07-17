@@ -1,4 +1,5 @@
+coverage
 pluggy
-pydantic
+pydantic>=2.4
 pytest
 setuptools

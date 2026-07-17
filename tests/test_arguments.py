@@ -1,6 +1,7 @@
 """Test against the different command-line arguments passed to the plugin."""
 
-from os import environ
+from os import environ, pathsep
+from os.path import abspath
 from random import randint, choice
 from re import findall
 from subprocess import check_output, STDOUT, CalledProcessError
@@ -35,7 +36,8 @@ def run_tests_with_plugin(request: FixtureRequest):  # pylint: disable=unused-ar
         return_code = 0
         try:
             env = environ.copy()
-            env["PYTHONPATH"] = "./src/pytest_rerunclassfailures"
+            env["PYTHONPATH"] = "./src/pytest_rerunclassfailures" + pathsep + abspath("tests/_cov_bootstrap")
+            env["COVERAGE_PROCESS_START"] = abspath("pyproject.toml")
             output = check_output(
                 ["pytest", test_path, "-p", "pytest_rerunclassfailures"] + args,
                 text=True,
@@ -200,6 +202,64 @@ def test_arguments_invalid_arguments(plugin_invalid_arguments):  # pylint: disab
     (error_code, output), param = plugin_invalid_arguments
     assert f"error: argument {param}" in output
     assert error_code == 4
+
+
+@pytest.fixture(
+    params=[["--rerun-class-max=-1"], ["--rerun-class-max=1", "--rerun-delay=-0.5"]],
+    ids=["negative_max", "negative_delay"],
+)
+def plugin_negative_arguments(request: FixtureRequest, run_tests_with_plugin) -> tuple:  # pylint: disable=W0621
+    """
+    Fixture to run pytest with the plugin with out-of-range (negative) option values.
+
+    :param request: pytest request object
+    :type request: _pytest.fixtures.FixtureRequest
+    :param run_tests_with_plugin: fixture to run pytest with the plugin
+    :type run_tests_with_plugin: function
+    :return: tuple with the return code and the output
+    :rtype: tuple
+    """
+    return run_tests_with_plugin("tests/test_source/test_always_fails.py", request.param)
+
+
+def test_arguments_negative_values_rejected(plugin_negative_arguments):  # pylint: disable=W0621
+    """
+    Test that the plugin rejects negative option values with a clear usage error instead of silently misbehaving.
+
+    :param plugin_negative_arguments: fixture to run pytest with out-of-range option values
+    :type plugin_negative_arguments: tuple
+    :return: none
+    """
+    error_code, output = plugin_negative_arguments
+    assert error_code == 4
+    assert "pytest-rerunclassfailures: invalid option value(s)" in output
+
+
+def test_arguments_rerunfailures_conflict_detected(run_tests_with_plugin):  # pylint: disable=W0621
+    """
+    Test that the plugin warns (but still runs the suite) when pytest-rerunfailures is also active.
+
+    Also verifies that --allow-rerunfailures silences the warning. Uses a conftest.py that registers a
+    stand-in plugin under the same name pytest-rerunfailures registers as, so this doesn't require the
+    real pytest-rerunfailures as a test dependency.
+
+    :param run_tests_with_plugin: fixture to run pytest with the plugin
+    :type run_tests_with_plugin: function
+    :return: none
+    """
+    # this repo's own pytest.ini passes -p no:warnings, so the message is always emitted via
+    # the plain-print fallback here rather than pytest's warnings summary (both paths are
+    # covered directly at the unit level in test_units_rest.py)
+    test_path = "tests/test_source/rerunfailures_scenario/test_rerunfailures_conflict.py"
+    error_code, output = run_tests_with_plugin(test_path, ["--rerun-class-max=1"])
+    assert error_code == 0
+    assert "pytest-rerunfailures is also active" in output
+    assert " 1 passed in " in output
+
+    error_code, output = run_tests_with_plugin(test_path, ["--rerun-class-max=1", "--allow-rerunfailures"])
+    assert error_code == 0
+    assert "pytest-rerunfailures is also active" not in output
+    assert " 1 passed in " in output
 
 
 def test_arguments_rerun_section_shown(run_tests_with_plugin):  # pylint: disable=W0621
