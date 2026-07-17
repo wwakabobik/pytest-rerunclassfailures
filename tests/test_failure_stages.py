@@ -1,4 +1,4 @@
-"""This test checks that the plugin correctly handles failure at any stage of the test."""
+"""Check that the plugin correctly handles failure at any stage of the test."""
 
 
 def test_failure_stages_setup(run_default_tests):  # pylint: disable=W0613

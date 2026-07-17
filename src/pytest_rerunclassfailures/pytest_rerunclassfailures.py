@@ -16,7 +16,7 @@ from _pytest.runner import runtestprotocol
 from _pytest._code.code import ExceptionInfo, TerminalRepr  # pylint: disable=protected-access
 
 
-class RerunClassOptions(BaseModel):
+class RerunClassOptions(BaseModel):  # pylint: disable=too-few-public-methods
     """Validated CLI options for the rerun-class-failures plugin."""
 
     rerun_max: int = Field(ge=0)
