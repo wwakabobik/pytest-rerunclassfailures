@@ -23,7 +23,7 @@ class TestClassWithUnpickleableObject:  # pylint: disable=too-many-instance-attr
         return "my_function"
 
     @contextmanager
-    def my_context_manager():  # type:ignore  # pylint: disable=E0211
+    def my_context_manager():  # type: ignore  # pylint: disable=E0211
         """Context manager for testing purposes"""
         yield "context_manager"
 
