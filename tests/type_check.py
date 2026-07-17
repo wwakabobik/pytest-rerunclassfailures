@@ -2,7 +2,6 @@
 
 from typing import TYPE_CHECKING
 
-
 if TYPE_CHECKING:
 
     class FixtureRequest:  # pylint: disable=too-few-public-methods
@@ -13,4 +12,4 @@ if TYPE_CHECKING:
 else:
     from typing import Any
 
-    FixtureRequest = Any
+    FixtureRequest = Any  # pylint: disable=invalid-name
