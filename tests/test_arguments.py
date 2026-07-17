@@ -202,6 +202,38 @@ def test_arguments_invalid_arguments(plugin_invalid_arguments):  # pylint: disab
     assert error_code == 4
 
 
+@pytest.fixture(
+    params=[["--rerun-class-max=-1"], ["--rerun-class-max=1", "--rerun-delay=-0.5"]],
+    ids=["negative_max", "negative_delay"],
+)
+def plugin_negative_arguments(request: FixtureRequest, run_tests_with_plugin) -> tuple:  # pylint: disable=W0621
+    """
+    Fixture to run pytest with the plugin with out-of-range (negative) option values.
+
+    :param request: pytest request object
+    :type request: _pytest.fixtures.FixtureRequest
+    :param run_tests_with_plugin: fixture to run pytest with the plugin
+    :type run_tests_with_plugin: function
+    :return: tuple with the return code and the output
+    :rtype: tuple
+    """
+    return run_tests_with_plugin("tests/test_source/test_always_fails.py", request.param)
+
+
+def test_arguments_negative_values_rejected(plugin_negative_arguments):  # pylint: disable=W0621
+    """
+    Test that the plugin rejects negative option values with a clear usage error
+    instead of silently misbehaving.
+
+    :param plugin_negative_arguments: fixture to run pytest with out-of-range option values
+    :type plugin_negative_arguments: tuple
+    :return: none
+    """
+    error_code, output = plugin_negative_arguments
+    assert error_code == 4
+    assert "pytest-rerunclassfailures: invalid option value(s)" in output
+
+
 def test_arguments_rerun_section_shown(run_tests_with_plugin):  # pylint: disable=W0621
     """
     Test that the plugin shows RERUNS section by default.

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-17
+
+### Added
+- Real use of `pydantic` (v2) to validate plugin CLI options; out-of-range values (e.g. negative `--rerun-class-max`/`--rerun-delay`) now raise a clear usage error instead of being silently accepted
+- Class-scope (and function-scope) fixtures are now genuinely torn down and re-invoked between class reruns, instead of only having plain instance attributes snapshotted/restored, using pytest's own SetupState finalizer chain (no manual fixture bookkeeping)
+- A class attribute lazily created during a rerun cycle (e.g. by a fixture's `if not hasattr(request.cls, "x"): ...` guard) is now removed between reruns instead of leaking whatever state a previous, aborted attempt left it in
+
+### Changed
+- Dropped Python 3.8 support (EOL); added Python 3.13 and 3.14 to the supported/tested versions
+- Pinned `pydantic>=2,<3` (was previously unpinned and unused)
+
+### Fixed
+- Fixed a logging format bug (`%` typo) that broke a debug log message
+- Fixed `setup.py`'s stale `pytest11` entry point and `setup.cfg`'s invalid `version = attr:` value
+- Fixed a crash (`assert not self._finalizers`) when a class-, module-, or session-scope fixture failed during setup and the class was rerun; module/session-scope fixtures are now correctly never retried (matching their scope contract) instead of being silently (and unsafely) retried
+
 ## [0.0.1] - 2024-03-19
 
 ### Added

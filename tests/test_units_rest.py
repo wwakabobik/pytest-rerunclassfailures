@@ -2,10 +2,11 @@
 
 from unittest.mock import MagicMock, create_autospec
 
+import pydantic
 import pytest
 from _pytest.terminal import TerminalReporter
 
-from pytest_rerunclassfailures.pytest_rerunclassfailures import RerunClassPlugin  # type: ignore
+from pytest_rerunclassfailures.pytest_rerunclassfailures import RerunClassPlugin, RerunClassOptions  # type: ignore
 
 
 @pytest.fixture
@@ -85,3 +86,150 @@ def test_unit_pytest_terminal_summary_with_tuple(rerun_class_plugin, mock_pytest
     terminalreporter._tw.line.assert_any_call("line1")  # pylint: disable=protected-access
     terminalreporter._tw.line.assert_any_call("line2")  # pylint: disable=protected-access
     terminalreporter._tw.line.assert_any_call("line3")  # pylint: disable=protected-access
+
+
+def test_unit_rerun_class_options_accepts_valid_values():
+    """Test that RerunClassOptions accepts and stores valid option values"""
+    options = RerunClassOptions(rerun_max=2, delay=1.5, only_last=True, hide_terminal_output=False)
+
+    assert options.rerun_max == 2
+    assert options.delay == 1.5
+    assert options.only_last is True
+    assert options.hide_terminal_output is False
+
+
+@pytest.mark.parametrize("field_name, value", [("rerun_max", -1), ("delay", -0.5)])
+def test_unit_rerun_class_options_rejects_negative_values(field_name, value):
+    """Test that RerunClassOptions rejects out-of-range (negative) values"""
+    kwargs = {"rerun_max": 1, "delay": 0.5, "only_last": False, "hide_terminal_output": False}
+    kwargs[field_name] = value
+
+    with pytest.raises(pydantic.ValidationError):
+        RerunClassOptions(**kwargs)
+
+
+def test_unit_plugin_init_rejects_invalid_options():
+    """Test that RerunClassPlugin.__init__ turns a pydantic ValidationError into a pytest.UsageError"""
+    config = MagicMock()
+    config.getoption = MagicMock(side_effect=lambda x: -1 if x == "--rerun-class-max" else 0)
+
+    with pytest.raises(pytest.UsageError, match="pytest-rerunclassfailures: invalid option value"):
+        RerunClassPlugin(config=config)
+
+
+def _make_stacked_setupstate(entries):  # pylint: disable=protected-access
+    """
+    Build a MagicMock item whose item.session._setupstate.stack behaves like the real
+    pytest SetupState.stack: an insertion-ordered dict of node -> (finalizers, exc).
+
+    :param entries: ordered list of (node, finalizers) pairs, root-first
+    :type entries: list
+    :return: item mock exposing item.session._setupstate.stack
+    :rtype: MagicMock
+    """
+    item = MagicMock()
+    item.session._setupstate.stack = {  # pylint: disable=protected-access
+        node: (finalizers, None) for node, finalizers in entries
+    }
+    return item
+
+
+def test_unit_teardown_class_and_below_pops_only_class_and_function(  # pylint: disable=W0621,protected-access
+    rerun_class_plugin,
+):
+    """Test that only class/function levels are popped and torn down, module/session are kept"""
+    session_fin, module_fin, class_fin, function_fin = MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    session_node, module_node, class_node, function_node = MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    item = _make_stacked_setupstate(
+        [
+            (session_node, [session_fin]),
+            (module_node, [module_fin]),
+            (class_node, [class_fin]),
+            (function_node, [function_fin]),
+        ]
+    )
+    parent_class = MagicMock()
+    parent_class.listchain.return_value = [session_node, module_node, class_node]  # class's own chain, len 3
+
+    rerun_class_plugin._teardown_class_and_below(parent_class, item)  # pylint: disable=protected-access
+
+    class_fin.assert_called_once()
+    function_fin.assert_called_once()
+    session_fin.assert_not_called()
+    module_fin.assert_not_called()
+    assert list(item.session._setupstate.stack.keys()) == [
+        session_node,
+        module_node,
+    ]  # pylint: disable=protected-access
+
+
+def test_unit_teardown_class_and_below_noop_when_already_at_target(rerun_class_plugin):  # pylint: disable=W0621
+    """Test that nothing is popped if the stack is already at (or below) the target length"""
+    session_fin, module_fin = MagicMock(), MagicMock()
+    session_node, module_node = MagicMock(), MagicMock()
+    item = _make_stacked_setupstate([(session_node, [session_fin]), (module_node, [module_fin])])
+    parent_class = MagicMock()
+    parent_class.listchain.return_value = [session_node, module_node, MagicMock()]
+
+    rerun_class_plugin._teardown_class_and_below(parent_class, item)  # pylint: disable=protected-access
+
+    session_fin.assert_not_called()
+    module_fin.assert_not_called()
+
+
+def test_unit_teardown_class_and_below_catches_finalizer_exception(rerun_class_plugin):  # pylint: disable=W0621
+    """Test that an exception raised by a finalizer is caught and remaining ones still run"""
+    session_fin = MagicMock()
+    failing_fin = MagicMock(side_effect=AssertionError("boom"))
+    other_fin = MagicMock()
+    session_node, module_node, class_node = MagicMock(), MagicMock(), MagicMock()
+    item = _make_stacked_setupstate(
+        [
+            (session_node, [session_fin]),
+            (module_node, [module_fin := MagicMock()]),
+            (class_node, [other_fin, failing_fin]),
+        ]
+    )
+    parent_class = MagicMock()
+    parent_class.listchain.return_value = [session_node, module_node, class_node]
+
+    rerun_class_plugin._teardown_class_and_below(parent_class, item)  # pylint: disable=protected-access
+
+    failing_fin.assert_called_once()
+    other_fin.assert_called_once()
+    session_fin.assert_not_called()
+    module_fin.assert_not_called()
+
+
+def test_unit_remove_non_initial_attributes_removes_lazily_created_state(rerun_class_plugin):  # pylint: disable=W0621
+    """Test that an attribute created after the initial-state snapshot gets removed"""
+
+    class _FakeTestClass:  # pylint: disable=too-few-public-methods
+        legit_attr = "should-survive"
+
+    _FakeTestClass.lazily_created = "should-be-removed"
+    parent = MagicMock()
+    parent.obj = _FakeTestClass
+    parent.name = "_FakeTestClass"
+    initial_state = {"legit_attr": "should-survive"}
+
+    rerun_class_plugin._remove_non_initial_attributes(parent, initial_state)  # pylint: disable=protected-access
+
+    assert _FakeTestClass.legit_attr == "should-survive"
+    assert not hasattr(_FakeTestClass, "lazily_created")
+
+
+def test_unit_remove_non_initial_attributes_ignores_callables_and_dunders(rerun_class_plugin):  # pylint: disable=W0621
+    """Test that methods and dunder/pytestmark attributes are never touched"""
+
+    class _FakeTestClassWithMethod:  # pylint: disable=too-few-public-methods
+        def a_method(self):
+            """A regular method that must never be removed"""
+
+    parent = MagicMock()
+    parent.obj = _FakeTestClassWithMethod
+    parent.name = "_FakeTestClassWithMethod"
+
+    rerun_class_plugin._remove_non_initial_attributes(parent, {})  # pylint: disable=protected-access
+
+    assert hasattr(_FakeTestClassWithMethod, "a_method")

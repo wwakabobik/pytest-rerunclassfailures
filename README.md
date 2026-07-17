@@ -74,6 +74,7 @@ Otherwise, there's no guarantee that results will be predictable.
 
 
 ## Known limitations
-- Please note, this plugin still not supports rerun of the class setup method. This means that if you use class-scoped fixtures, they will not be rerun, only class attributes will be reset to initial values.
+- Function- and class-scope fixtures used by the rerun class are genuinely torn down (their real finalizers run) and re-invoked between reruns. Module/package/session-scope fixtures are deliberately left untouched, since they may be shared with content outside the rerun class/cycle.
+- A class attribute set purely as a side effect of a *function-scope* fixture whose return value is consumed as a test parameter (not stored on `self`) can still leak stale per-test state across reruns. This happens because pytest permanently memoizes the bound test-class instance on the underlying `Function` item itself, and this plugin reruns the same `Function` item objects rather than fresh ones - so a stale instance-level attribute set by a previous failed attempt's own test body can shadow the class-level attribute a fixture resets. This is independent of fixture teardown and is not fixed by this plugin.
 - Due to `pytest-xdist` plugin limitations, report output will be thrown only when all tests in class are executed. This means that you will not see the output of the failed test until all tests in the class are rerun. Unfortunately, `pytest-xdist` plugin allows reporting results for only scheduled tests in scheduled order. Due to that, tests in class will be grouped by test, but not by rerun, as in regular run.
 - Never use this plugin with `pytest-rerunfailures` plugin. It will not work as expected.
