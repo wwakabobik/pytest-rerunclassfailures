@@ -1,7 +1,5 @@
 """This test checks that the plugin correctly handles a class attributes and fixtures"""
 
-import pytest
-
 
 def test_class_attributes_non_init(run_default_tests):  # pylint: disable=W0613
     """
@@ -108,10 +106,12 @@ def test_class_attributes_function_params(run_default_tests):  # pylint: disable
     assert "test_function_params_attribute_forced_failure FAILED" in output
 
 
-@pytest.mark.xfail(reason="This test is expected to fail due to fixtures not reinitialized")
 def test_class_attributes_function_fixtures(run_default_tests):  # pylint: disable=W0613
     """
-    This test check params obtained or set by fixtures are handled correctly
+    This test proves that a class attribute set as a side effect of a function-scope
+    fixture whose return value is consumed as a test parameter is reset correctly across
+    reruns - including the per-item bound instance (Function._instance/_obj), which
+    pytest otherwise memoizes on the same Item object this plugin reruns
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function

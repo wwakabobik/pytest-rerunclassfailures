@@ -407,6 +407,13 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         self._set_parent_initial_state(test_class, initial_state)
         for i in range(len(siblings) - 1):
             siblings[i].parent = test_class
+            # Drop the memoized bound instance/method (Function._instance / Function._obj) so
+            # the next run gets a genuinely fresh instance via parent.newinstance(), instead of
+            # reusing the same instance (and any instance attributes it accumulated) across reruns
+            if hasattr(siblings[i], "_instance"):
+                delattr(siblings[i], "_instance")
+            if hasattr(siblings[i], "_obj"):
+                delattr(siblings[i], "_obj")
 
         return test_class, siblings
 

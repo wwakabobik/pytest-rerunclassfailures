@@ -92,6 +92,38 @@ def test_unit_pytest_terminal_summary_with_tuple(rerun_class_plugin, mock_pytest
     terminalreporter._tw.line.assert_any_call("line3")  # pylint: disable=protected-access
 
 
+def test_unit_pytest_terminal_summary_without_longrepr(rerun_class_plugin, mock_pytest_config):  # pylint: disable=W0621
+    """Test that a rerun report with no longrepr attribute at all is handled without error"""
+    terminalreporter = create_autospec(TerminalReporter, instance=True)
+    rerun_test = MagicMock(spec=["nodeid"])
+    rerun_test.nodeid = "test_nodeid"
+    terminalreporter.stats = {"rerun": [rerun_test]}
+    terminalreporter._tw = MagicMock()  # pylint: disable=protected-access
+
+    rerun_class_plugin.pytest_terminal_summary(terminalreporter, exitstatus=0, config=mock_pytest_config)
+
+    terminalreporter._tw.line.assert_called_once_with("RERUN test_nodeid")  # pylint: disable=protected-access
+
+
+def test_unit_pytest_terminal_summary_skips_falsy_tuple_lines(
+    rerun_class_plugin, mock_pytest_config
+):  # pylint: disable=W0621
+    """Test that a falsy entry within a tuple longrepr is skipped rather than printed"""
+    terminalreporter = create_autospec(TerminalReporter, instance=True)
+    terminalreporter.stats = {"rerun": [MagicMock()]}
+    terminalreporter._tw = MagicMock()  # pylint: disable=protected-access
+
+    rerun_test = terminalreporter.stats["rerun"][0]
+    rerun_test.nodeid = "test_nodeid"
+    rerun_test.longrepr = ("line1", "", None)
+
+    rerun_class_plugin.pytest_terminal_summary(terminalreporter, exitstatus=0, config=mock_pytest_config)
+
+    assert terminalreporter._tw.line.call_count == 2  # pylint: disable=protected-access
+    terminalreporter._tw.line.assert_any_call("RERUN test_nodeid")  # pylint: disable=protected-access
+    terminalreporter._tw.line.assert_any_call("line1")  # pylint: disable=protected-access
+
+
 def test_unit_rerun_class_options_accepts_valid_values():
     """Test that RerunClassOptions accepts and stores valid option values"""
     options = RerunClassOptions(rerun_max=2, delay=1.5, only_last=True, hide_terminal_output=False)
@@ -306,3 +338,26 @@ def test_unit_pytest_runtest_protocol_defers_non_class_items(rerun_class_plugin)
     result = rerun_class_plugin.pytest_runtest_protocol(item, nextitem=MagicMock())
 
     assert result is None
+
+
+def test_unit_recreate_test_class_drops_memoized_instance_and_obj(rerun_class_plugin):  # pylint: disable=W0621
+    """
+    Test that Function._instance/_obj are dropped for siblings that have them, so the
+    next run gets a genuinely fresh bound instance instead of reusing the same one
+    (and any instance attributes it accumulated) across reruns.
+    """
+    test_class_mock = create_autospec(pytest.Class, instance=True)
+    sibling_with_state = MagicMock()
+    sibling_with_state._instance = object()  # pylint: disable=protected-access
+    sibling_with_state._obj = object()  # pylint: disable=protected-access
+    sibling_without_state = MagicMock(spec=["parent"])
+    siblings_mock = [sibling_with_state, sibling_without_state, None]
+
+    rerun_class_plugin._recreate_test_class(  # pylint: disable=protected-access
+        test_class=test_class_mock, siblings=siblings_mock, initial_state={}
+    )
+
+    assert not hasattr(sibling_with_state, "_instance")
+    assert not hasattr(sibling_with_state, "_obj")
+    assert sibling_with_state.parent is test_class_mock
+    assert sibling_without_state.parent is test_class_mock
