@@ -16,8 +16,10 @@
   (non-class items, or when disabled) — pytest-rerunfailures now cooperates correctly for
   standalone tests. For a test *method inside a class this plugin reruns*, true cooperation
   isn't possible (the class-level rerun already owns that item's fate), so `pytest_configure`
-  now detects `pytest-rerunfailures` and raises a clear `UsageError` unless
-  `--allow-rerunfailures` is passed, explaining that class-scoped markers get superseded.
+  now detects `pytest-rerunfailures` and prints a one-time message explaining that
+  class-scoped markers get superseded (via `issue_config_time_warning`, or a plain `print`
+  fallback if the user's own config disables the `warnings` plugin) — the suite is never
+  blocked from running; `--allow-rerunfailures` just silences the message.
 
 - Known residual limitation: a class attribute set purely as a side effect of a
   *function-scope* fixture whose return value is consumed as a test parameter (not stored on

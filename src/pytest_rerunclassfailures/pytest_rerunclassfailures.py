@@ -66,10 +66,11 @@ def pytest_addoption(parser: Parser) -> None:
         dest="allow_rerunfailures",
         default=False,
         help=(
-            "allow running alongside pytest-rerunfailures instead of failing fast. "
-            "Standalone (non-class) tests cooperate normally; a pytest-rerunfailures "
-            "marker (or --reruns) on a method inside a class this plugin reruns is "
-            "superseded by the class-level rerun and never applies on its own"
+            "silence the startup message about pytest-rerunfailures also being active "
+            "(the suite runs either way). Standalone (non-class) tests cooperate "
+            "normally; a pytest-rerunfailures marker (or --reruns) on a method inside a "
+            "class this plugin reruns is superseded by the class-level rerun and never "
+            "applies on its own"
         ),
     )
 
@@ -536,14 +537,23 @@ def pytest_configure(config: Config) -> None:
     """
     if config.getoption("--rerun-class-max") != 0:
         if config.pluginmanager.has_plugin("rerunfailures") and not config.getoption("--allow-rerunfailures"):
-            raise pytest.UsageError(
+            message = (
                 "pytest-rerunclassfailures: pytest-rerunfailures is also active. Both plugins "
                 "hook pytest_runtest_protocol; a pytest-rerunfailures marker (or --reruns) on a "
                 "method inside a class this plugin reruns is silently superseded by the "
-                "class-level rerun and never applies on its own. Pass --allow-rerunfailures once "
-                "you've confirmed that's acceptable for your test suite (standalone/non-class "
-                "tests are unaffected and cooperate normally with pytest-rerunfailures)."
+                "class-level rerun and never applies on its own. Standalone (non-class) tests "
+                "are unaffected and cooperate normally with pytest-rerunfailures. Pass "
+                "--allow-rerunfailures to silence this message once you've confirmed that's "
+                "acceptable for your test suite."
             )
+            if config.pluginmanager.is_blocked("warnings"):
+                # issue_config_time_warning is silently a no-op under -p no:warnings, and the
+                # terminal reporter isn't guaranteed registered yet at this point in configure,
+                # so fall back to a plain print - it needs no pytest subsystem to be ready and
+                # guarantees this is seen even with warnings disabled
+                print(f"\n{message}")
+            else:
+                config.issue_config_time_warning(pytest.PytestConfigWarning(message), stacklevel=2)
         # constructed (and validated) even for a negative value, so an out-of-range option
         # surfaces a clear usage error instead of being silently treated as "disabled"
         rerun_plugin = RerunClassPlugin(config)

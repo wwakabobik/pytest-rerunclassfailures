@@ -38,7 +38,7 @@ Other options you may use:
 - `--rerun-delay` - delay between reruns in seconds. Default is 0.5.
 - `--rerun-show-only-last` - show only last rerun results (without 'reruns' in log), by default is not used.
 - `--hide-rerun-details` - hide rerun details in the log ('RERUNS' section in terminal), by default is not used.
-- `--allow-rerunfailures` - allow running alongside `pytest-rerunfailures` instead of failing fast on startup; see [pytest-rerunfailures compatibility](#pytest-rerunfailures-compatibility) below.
+- `--allow-rerunfailures` - silence the startup message about `pytest-rerunfailures` also being active; see [pytest-rerunfailures compatibility](#pytest-rerunfailures-compatibility) below.
 
 ```bash
 PYTHONPATH=. pytest -s tests -p pytest_rerunclassfailures --rerun-class-max=3 --rerun-delay=1 --rerun-show-only-last
@@ -81,8 +81,20 @@ Otherwise, there's no guarantee that results will be predictable.
 
 ## pytest-rerunfailures compatibility
 
-Both plugins hook `pytest_runtest_protocol`, so by default this plugin refuses to start (raises a clear `UsageError`) if `pytest-rerunfailures` is also active, to avoid a silent conflict.
+Both plugins hook `pytest_runtest_protocol`. **The test suite still runs** if both plugins are active at once - nothing is blocked - but the behavior differs depending on where a test lives, and by default a message is printed once at the start of the run to make sure you notice this:
 
-Pass `--allow-rerunfailures` to run both together once you understand the caveat:
-- Standalone (non-class) tests are unaffected and cooperate normally - a `pytest-rerunfailures` marker (`@pytest.mark.flaky`) or `--reruns` on a module-level test still reruns exactly as `pytest-rerunfailures` intends.
-- A `pytest-rerunfailures` marker (or `--reruns`) on a test **method inside a class this plugin reruns** is silently superseded: the class-level rerun already governs that test, and the per-test marker never gets its own independent reruns.
+- **Standalone (non-class) tests cooperate normally.** A `pytest-rerunfailures` marker (`@pytest.mark.flaky`) or `--reruns` on a module-level test reruns exactly as `pytest-rerunfailures` intends; this plugin steps out of the way for anything it doesn't manage.
+- **A test *method inside a class this plugin reruns* is different.** The class-level rerun already governs that test's fate, so a `pytest-rerunfailures` marker (or `--reruns`) on that method is silently superseded - it never gets its own independent reruns on top of the class-level ones. This is the part that's easy to miss, which is why the startup message calls it out explicitly.
+
+By default, when `pytest-rerunfailures` is detected, you'll see a message like this once at the start of the run (and again in the warnings summary, unless your own config disables the `warnings` plugin, in which case it's printed directly so it's never silently lost):
+
+```
+pytest-rerunclassfailures: pytest-rerunfailures is also active. Both plugins hook
+pytest_runtest_protocol; a pytest-rerunfailures marker (or --reruns) on a method inside
+a class this plugin reruns is silently superseded by the class-level rerun and never
+applies on its own. Standalone (non-class) tests are unaffected and cooperate normally
+with pytest-rerunfailures. Pass --allow-rerunfailures to silence this message once
+you've confirmed that's acceptable for your test suite.
+```
+
+Pass `--allow-rerunfailures` once you've read and accepted the caveat above, to silence this message on future runs.

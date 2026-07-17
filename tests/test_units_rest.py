@@ -239,7 +239,7 @@ def test_unit_remove_non_initial_attributes_ignores_callables_and_dunders(rerun_
     assert hasattr(_FakeTestClassWithMethod, "a_method")
 
 
-def _make_config_mock(rerun_class_max=1, has_rerunfailures=False, allow_rerunfailures=False):
+def _make_config_mock(rerun_class_max=1, has_rerunfailures=False, allow_rerunfailures=False, warnings_blocked=False):
     options = {
         "--rerun-class-max": rerun_class_max,
         "--rerun-delay": 0.5,
@@ -250,25 +250,42 @@ def _make_config_mock(rerun_class_max=1, has_rerunfailures=False, allow_rerunfai
     config = MagicMock()
     config.getoption = MagicMock(side_effect=lambda name: options[name])
     config.pluginmanager.has_plugin = MagicMock(return_value=has_rerunfailures)
+    config.pluginmanager.is_blocked = MagicMock(return_value=warnings_blocked)
     return config
 
 
-def test_unit_pytest_configure_rejects_rerunfailures_by_default():
-    """Test that pytest_configure refuses to start alongside pytest-rerunfailures"""
+def test_unit_pytest_configure_warns_about_rerunfailures_by_default():
+    """Test that pytest_configure warns (but still starts) alongside pytest-rerunfailures"""
     config = _make_config_mock(has_rerunfailures=True)
 
-    with pytest.raises(pytest.UsageError, match="pytest-rerunfailures is also active"):
-        pytest_configure(config)
+    pytest_configure(config)
 
-    config.pluginmanager.register.assert_not_called()
+    config.issue_config_time_warning.assert_called_once()
+    (warning,), kwargs = config.issue_config_time_warning.call_args
+    assert isinstance(warning, pytest.PytestConfigWarning)
+    assert "pytest-rerunfailures is also active" in str(warning)
+    assert kwargs["stacklevel"] == 2
+    config.pluginmanager.register.assert_called_once()
+
+
+def test_unit_pytest_configure_prints_fallback_when_warnings_blocked(capsys):
+    """Test that pytest_configure falls back to a plain print when -p no:warnings is set"""
+    config = _make_config_mock(has_rerunfailures=True, warnings_blocked=True)
+
+    pytest_configure(config)
+
+    config.issue_config_time_warning.assert_not_called()
+    assert "pytest-rerunfailures is also active" in capsys.readouterr().out
+    config.pluginmanager.register.assert_called_once()
 
 
 def test_unit_pytest_configure_allows_rerunfailures_with_flag():
-    """Test that --allow-rerunfailures lets both plugins coexist"""
+    """Test that --allow-rerunfailures silences the warning and both plugins coexist"""
     config = _make_config_mock(has_rerunfailures=True, allow_rerunfailures=True)
 
     pytest_configure(config)
 
+    config.issue_config_time_warning.assert_not_called()
     config.pluginmanager.register.assert_called_once()
 
 

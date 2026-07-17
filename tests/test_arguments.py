@@ -238,22 +238,27 @@ def test_arguments_negative_values_rejected(plugin_negative_arguments):  # pylin
 
 def test_arguments_rerunfailures_conflict_detected(run_tests_with_plugin):  # pylint: disable=W0621
     """
-    Test that the plugin refuses to start when pytest-rerunfailures is also active,
-    unless --allow-rerunfailures is passed. Uses a conftest.py that registers a
-    stand-in plugin under the same name pytest-rerunfailures registers as, so this
-    doesn't require the real pytest-rerunfailures as a test dependency.
+    Test that the plugin warns (but still runs the suite) when pytest-rerunfailures is
+    also active, and that --allow-rerunfailures silences the warning. Uses a conftest.py
+    that registers a stand-in plugin under the same name pytest-rerunfailures registers
+    as, so this doesn't require the real pytest-rerunfailures as a test dependency.
 
     :param run_tests_with_plugin: fixture to run pytest with the plugin
     :type run_tests_with_plugin: function
     :return: none
     """
+    # this repo's own pytest.ini passes -p no:warnings, so the message is always emitted via
+    # the plain-print fallback here rather than pytest's warnings summary (both paths are
+    # covered directly at the unit level in test_units_rest.py)
     test_path = "tests/test_source/rerunfailures_scenario/test_rerunfailures_conflict.py"
     error_code, output = run_tests_with_plugin(test_path, ["--rerun-class-max=1"])
-    assert error_code == 4
+    assert error_code == 0
     assert "pytest-rerunfailures is also active" in output
+    assert " 1 passed in " in output
 
     error_code, output = run_tests_with_plugin(test_path, ["--rerun-class-max=1", "--allow-rerunfailures"])
     assert error_code == 0
+    assert "pytest-rerunfailures is also active" not in output
     assert " 1 passed in " in output
 
 
