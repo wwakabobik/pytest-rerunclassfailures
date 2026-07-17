@@ -236,6 +236,27 @@ def test_arguments_negative_values_rejected(plugin_negative_arguments):  # pylin
     assert "pytest-rerunclassfailures: invalid option value(s)" in output
 
 
+def test_arguments_rerunfailures_conflict_detected(run_tests_with_plugin):  # pylint: disable=W0621
+    """
+    Test that the plugin refuses to start when pytest-rerunfailures is also active,
+    unless --allow-rerunfailures is passed. Uses a conftest.py that registers a
+    stand-in plugin under the same name pytest-rerunfailures registers as, so this
+    doesn't require the real pytest-rerunfailures as a test dependency.
+
+    :param run_tests_with_plugin: fixture to run pytest with the plugin
+    :type run_tests_with_plugin: function
+    :return: none
+    """
+    test_path = "tests/test_source/rerunfailures_scenario/test_rerunfailures_conflict.py"
+    error_code, output = run_tests_with_plugin(test_path, ["--rerun-class-max=1"])
+    assert error_code == 4
+    assert "pytest-rerunfailures is also active" in output
+
+    error_code, output = run_tests_with_plugin(test_path, ["--rerun-class-max=1", "--allow-rerunfailures"])
+    assert error_code == 0
+    assert " 1 passed in " in output
+
+
 def test_arguments_rerun_section_shown(run_tests_with_plugin):  # pylint: disable=W0621
     """
     Test that the plugin shows RERUNS section by default.

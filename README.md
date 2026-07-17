@@ -38,6 +38,7 @@ Other options you may use:
 - `--rerun-delay` - delay between reruns in seconds. Default is 0.5.
 - `--rerun-show-only-last` - show only last rerun results (without 'reruns' in log), by default is not used.
 - `--hide-rerun-details` - hide rerun details in the log ('RERUNS' section in terminal), by default is not used.
+- `--allow-rerunfailures` - allow running alongside `pytest-rerunfailures` instead of failing fast on startup; see [pytest-rerunfailures compatibility](#pytest-rerunfailures-compatibility) below.
 
 ```bash
 PYTHONPATH=. pytest -s tests -p pytest_rerunclassfailures --rerun-class-max=3 --rerun-delay=1 --rerun-show-only-last
@@ -77,4 +78,11 @@ Otherwise, there's no guarantee that results will be predictable.
 - Function- and class-scope fixtures used by the rerun class are genuinely torn down (their real finalizers run) and re-invoked between reruns. Module/package/session-scope fixtures are deliberately left untouched, since they may be shared with content outside the rerun class/cycle.
 - A class attribute set purely as a side effect of a *function-scope* fixture whose return value is consumed as a test parameter (not stored on `self`) can still leak stale per-test state across reruns. This happens because pytest permanently memoizes the bound test-class instance on the underlying `Function` item itself, and this plugin reruns the same `Function` item objects rather than fresh ones - so a stale instance-level attribute set by a previous failed attempt's own test body can shadow the class-level attribute a fixture resets. This is independent of fixture teardown and is not fixed by this plugin.
 - Due to `pytest-xdist` plugin limitations, report output will be thrown only when all tests in class are executed. This means that you will not see the output of the failed test until all tests in the class are rerun. Unfortunately, `pytest-xdist` plugin allows reporting results for only scheduled tests in scheduled order. Due to that, tests in class will be grouped by test, but not by rerun, as in regular run.
-- Never use this plugin with `pytest-rerunfailures` plugin. It will not work as expected.
+
+## pytest-rerunfailures compatibility
+
+Both plugins hook `pytest_runtest_protocol`, so by default this plugin refuses to start (raises a clear `UsageError`) if `pytest-rerunfailures` is also active, to avoid a silent conflict.
+
+Pass `--allow-rerunfailures` to run both together once you understand the caveat:
+- Standalone (non-class) tests are unaffected and cooperate normally - a `pytest-rerunfailures` marker (`@pytest.mark.flaky`) or `--reruns` on a module-level test still reruns exactly as `pytest-rerunfailures` intends.
+- A `pytest-rerunfailures` marker (or `--reruns`) on a test **method inside a class this plugin reruns** is silently superseded: the class-level rerun already governs that test, and the per-test marker never gets its own independent reruns.

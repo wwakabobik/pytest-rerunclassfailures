@@ -3,7 +3,7 @@
 import logging
 from copy import deepcopy
 from time import sleep
-from typing import Tuple, Literal, Union
+from typing import Tuple, Literal, Optional, Union
 
 import pytest
 import _pytest.nodes
@@ -12,7 +12,7 @@ from _pytest.terminal import TerminalReporter
 from _pytest.config import Config
 from _pytest.config.argparsing import Parser
 from _pytest.reports import TestReport
-from _pytest.runner import runtestprotocol, pytest_runtest_protocol
+from _pytest.runner import runtestprotocol
 from _pytest._code.code import ExceptionInfo, TerminalRepr  # pylint: disable=protected-access
 
 
@@ -59,6 +59,18 @@ def pytest_addoption(parser: Parser) -> None:
         dest="hide_rerun_details",
         default=False,
         help="hide rerun details in terminal output if passed",
+    )
+    group.addoption(
+        "--allow-rerunfailures",
+        action="store_true",
+        dest="allow_rerunfailures",
+        default=False,
+        help=(
+            "allow running alongside pytest-rerunfailures instead of failing fast. "
+            "Standalone (non-class) tests cooperate normally; a pytest-rerunfailures "
+            "marker (or --reruns) on a method inside a class this plugin reruns is "
+            "superseded by the class-level rerun and never applies on its own"
+        ),
     )
 
 
@@ -167,7 +179,7 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
     @pytest.hookimpl(tryfirst=True)
     def pytest_runtest_protocol(
         self, item: _pytest.nodes.Item, nextitem: _pytest.nodes.Item  # pylint: disable=W0613
-    ) -> bool:
+    ) -> Optional[bool]:
         """
         Run the test protocol.
 
@@ -175,16 +187,17 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
         :type item: _pytest.nodes.Item
         :param nextitem: next pytest item
         :type nextitem: _pytest.nodes.Item
-        :return: True if any actions of plugin performed, False otherwise
-        :rtype: bool
+        :return: True if this plugin handled the item, None to defer to other
+                 pytest_runtest_protocol hookimpls (pytest core's default, or another
+                 rerun plugin), False is never returned
+        :rtype: Optional[bool]
         """
         parent_class = item.getparent(pytest.Class)
         module = item.nodeid.split("::")[0]
 
         if item.cls is None or self.rerun_max <= 0 or not parent_class:  # type: ignore
-            self.logger.debug("Ignoring %s (node have no parent class)", item.nodeid)
-            pytest_runtest_protocol(item, nextitem=nextitem)
-            return False  # ignore non-class items or plugin disabled
+            self.logger.debug("Deferring %s to other pytest_runtest_protocol hookimpls", item.nodeid)
+            return None  # let pytest core / other rerun plugins handle non-class items
 
         if module not in self.rerun_classes:
             self.rerun_classes[module] = {}
@@ -522,6 +535,15 @@ def pytest_configure(config: Config) -> None:
     :rtype: None
     """
     if config.getoption("--rerun-class-max") != 0:
+        if config.pluginmanager.has_plugin("rerunfailures") and not config.getoption("--allow-rerunfailures"):
+            raise pytest.UsageError(
+                "pytest-rerunclassfailures: pytest-rerunfailures is also active. Both plugins "
+                "hook pytest_runtest_protocol; a pytest-rerunfailures marker (or --reruns) on a "
+                "method inside a class this plugin reruns is silently superseded by the "
+                "class-level rerun and never applies on its own. Pass --allow-rerunfailures once "
+                "you've confirmed that's acceptable for your test suite (standalone/non-class "
+                "tests are unaffected and cooperate normally with pytest-rerunfailures)."
+            )
         # constructed (and validated) even for a negative value, so an out-of-range option
         # surfaces a clear usage error instead of being silently treated as "disabled"
         rerun_plugin = RerunClassPlugin(config)

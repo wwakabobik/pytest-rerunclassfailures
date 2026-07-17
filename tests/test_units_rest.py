@@ -6,7 +6,11 @@ import pydantic
 import pytest
 from _pytest.terminal import TerminalReporter
 
-from pytest_rerunclassfailures.pytest_rerunclassfailures import RerunClassPlugin, RerunClassOptions  # type: ignore
+from pytest_rerunclassfailures.pytest_rerunclassfailures import (  # type: ignore
+    RerunClassPlugin,
+    RerunClassOptions,
+    pytest_configure,
+)
 
 
 @pytest.fixture
@@ -233,3 +237,55 @@ def test_unit_remove_non_initial_attributes_ignores_callables_and_dunders(rerun_
     rerun_class_plugin._remove_non_initial_attributes(parent, {})  # pylint: disable=protected-access
 
     assert hasattr(_FakeTestClassWithMethod, "a_method")
+
+
+def _make_config_mock(rerun_class_max=1, has_rerunfailures=False, allow_rerunfailures=False):
+    options = {
+        "--rerun-class-max": rerun_class_max,
+        "--rerun-delay": 0.5,
+        "--rerun-show-only-last": False,
+        "--hide-rerun-details": False,
+        "--allow-rerunfailures": allow_rerunfailures,
+    }
+    config = MagicMock()
+    config.getoption = MagicMock(side_effect=lambda name: options[name])
+    config.pluginmanager.has_plugin = MagicMock(return_value=has_rerunfailures)
+    return config
+
+
+def test_unit_pytest_configure_rejects_rerunfailures_by_default():
+    """Test that pytest_configure refuses to start alongside pytest-rerunfailures"""
+    config = _make_config_mock(has_rerunfailures=True)
+
+    with pytest.raises(pytest.UsageError, match="pytest-rerunfailures is also active"):
+        pytest_configure(config)
+
+    config.pluginmanager.register.assert_not_called()
+
+
+def test_unit_pytest_configure_allows_rerunfailures_with_flag():
+    """Test that --allow-rerunfailures lets both plugins coexist"""
+    config = _make_config_mock(has_rerunfailures=True, allow_rerunfailures=True)
+
+    pytest_configure(config)
+
+    config.pluginmanager.register.assert_called_once()
+
+
+def test_unit_pytest_configure_ignores_rerunfailures_check_when_disabled():
+    """Test that the rerunfailures check is skipped entirely when this plugin is disabled"""
+    config = _make_config_mock(rerun_class_max=0, has_rerunfailures=True)
+
+    pytest_configure(config)
+
+    config.pluginmanager.register.assert_not_called()
+
+
+def test_unit_pytest_runtest_protocol_defers_non_class_items(rerun_class_plugin):  # pylint: disable=W0621
+    """Test that non-class items are deferred (None) rather than handled directly"""
+    item = MagicMock()
+    item.cls = None
+
+    result = rerun_class_plugin.pytest_runtest_protocol(item, nextitem=MagicMock())
+
+    assert result is None

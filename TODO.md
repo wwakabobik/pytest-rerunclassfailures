@@ -8,6 +8,17 @@
   (e.g. `if not hasattr(request.cls, "user"): request.cls.user = ...`) is now removed between
   reruns, instead of surviving in whatever state a previous, aborted attempt left it in.
 
+- pytest-rerunfailures compatibility — DONE (see CHANGELOG 0.2.0): both plugins hook
+  `pytest_runtest_protocol` (a `firstresult` hookspec), so this plugin previously always
+  claimed every item unconditionally, silently disabling pytest-rerunfailures entirely (even
+  for tests outside any class). Fixed by deferring (returning `None` instead of `False`,
+  and no longer calling the real protocol manually) for items this plugin doesn't manage
+  (non-class items, or when disabled) — pytest-rerunfailures now cooperates correctly for
+  standalone tests. For a test *method inside a class this plugin reruns*, true cooperation
+  isn't possible (the class-level rerun already owns that item's fate), so `pytest_configure`
+  now detects `pytest-rerunfailures` and raises a clear `UsageError` unless
+  `--allow-rerunfailures` is passed, explaining that class-scoped markers get superseded.
+
 - Known residual limitation: a class attribute set purely as a side effect of a
   *function-scope* fixture whose return value is consumed as a test parameter (not stored on
   `self`) can still leak stale per-test state across reruns. This is because pytest's

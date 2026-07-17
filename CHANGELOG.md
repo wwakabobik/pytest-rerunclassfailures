@@ -11,10 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real use of `pydantic` (v2) to validate plugin CLI options; out-of-range values (e.g. negative `--rerun-class-max`/`--rerun-delay`) now raise a clear usage error instead of being silently accepted
 - Class-scope (and function-scope) fixtures are now genuinely torn down and re-invoked between class reruns, instead of only having plain instance attributes snapshotted/restored, using pytest's own SetupState finalizer chain (no manual fixture bookkeeping)
 - A class attribute lazily created during a rerun cycle (e.g. by a fixture's `if not hasattr(request.cls, "x"): ...` guard) is now removed between reruns instead of leaking whatever state a previous, aborted attempt left it in
+- New `--allow-rerunfailures` option: the plugin now detects `pytest-rerunfailures` and refuses to start with a clear error by default (both hook `pytest_runtest_protocol`); pass the flag to run both together. Standalone (non-class) tests now cooperate correctly with `pytest-rerunfailures` regardless of the flag, since this plugin defers to other `pytest_runtest_protocol` implementations for items outside its scope instead of always claiming them
 
 ### Changed
 - Dropped Python 3.8 support (EOL); added Python 3.13 and 3.14 to the supported/tested versions
 - Pinned `pydantic>=2,<3` (was previously unpinned and unused)
+- Test suite coverage measurement now correctly instruments the subprocess-spawned pytest runs most of the suite uses (previously silently under-measured to ~42% both locally and in CI, since coverage.py never measures a child process without `COVERAGE_PROCESS_START` + `parallel=true`)
 
 ### Fixed
 - Fixed a logging format bug (`%` typo) that broke a debug log message
