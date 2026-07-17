@@ -115,3 +115,8 @@ max-line-length = 120
 
 [tool.pytest.ini_options]
 norecursedirs = ["tests/test_source"]
+
+[tool.coverage.run]
+source = ["src/pytest_rerunclassfailures"]
+parallel = true
+relative_files = true

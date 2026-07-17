@@ -1,6 +1,7 @@
 """Test against the different command-line arguments passed to the plugin."""
 
 from os import environ
+from os.path import abspath
 from subprocess import check_output, STDOUT, CalledProcessError
 from typing import Optional, Union
 
@@ -37,6 +38,7 @@ def run_tests_with_plugin(request: FixtureRequest):  # pylint: disable=unused-ar
         try:
             env = environ.copy()
             env["PYTHONPATH"] = "./src/pytest_rerunclassfailures"
+            env["COVERAGE_PROCESS_START"] = abspath("pyproject.toml")
             output = check_output(
                 ["pytest"] + test_path + ["-p", "pytest_rerunclassfailures"] + args,
                 text=True,
