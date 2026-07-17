@@ -11,7 +11,8 @@ import pytest
 
 
 class LazyUser:  # pylint: disable=too-few-public-methods
-    """Simple mutable object standing in for something like a test user/session."""
+
+    """Simple mutable object standing in for something like a test user/session."""  # fmt: skip
 
     def __init__(self, name):
         """Store the given name on a fresh instance."""
@@ -26,7 +27,8 @@ def lazy_user_fixture(request):
 
 
 class TestLazyClassAttributeCorruption:
-    """Test class proving the lazily-created attribute is reset, not left stale, on rerun."""
+
+    """Test class proving the lazily-created attribute is reset, not left stale, on rerun."""  # fmt: skip
 
     def test_lazy_attribute_is_fresh(self):
         """Must see a fresh user on every attempt, never one mutated by a prior attempt."""

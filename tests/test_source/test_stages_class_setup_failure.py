@@ -6,7 +6,8 @@ attempts: list = []
 
 
 class TestFailInClassSetup:
-    """Check that a class-scope fixture failing during setup is genuinely retried."""
+
+    """Check that a class-scope fixture failing during setup is genuinely retried."""  # fmt: skip
 
     @pytest.fixture(scope="class", autouse=True)
     def class_setup(self, request):  # pylint: disable=unused-argument

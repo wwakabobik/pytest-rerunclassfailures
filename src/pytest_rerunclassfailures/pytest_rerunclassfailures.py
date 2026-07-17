@@ -17,7 +17,8 @@ from _pytest._code.code import ExceptionInfo, TerminalRepr  # pylint: disable=pr
 
 
 class RerunClassOptions(BaseModel):  # pylint: disable=too-few-public-methods
-    """Validated CLI options for the rerun-class-failures plugin."""
+
+    """Validated CLI options for the rerun-class-failures plugin."""  # fmt: skip
 
     rerun_max: int = Field(ge=0)
     delay: float = Field(ge=0)

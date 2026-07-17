@@ -15,7 +15,8 @@ def class_fixture_with_teardown(request):
 
 @pytest.mark.usefixtures("class_fixture_with_teardown")
 class TestClassScopeFixtureTeardown:
-    """Test class proving the class-scope fixture is genuinely re-invoked on rerun."""
+
+    """Test class proving the class-scope fixture is genuinely re-invoked on rerun."""  # fmt: skip
 
     def test_class_fixture_teardown_initial(self):
         """Setup count must match how many times the fixture has actually (re)run."""

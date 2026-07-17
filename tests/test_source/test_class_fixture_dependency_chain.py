@@ -21,7 +21,8 @@ def dependent_fixture(base_fixture):  # pylint: disable=redefined-outer-name
 
 @pytest.mark.usefixtures("dependent_fixture")
 class TestClassFixtureDependencyChain:
-    """Test class using a chain of dependent class-scope fixtures."""
+
+    """Test class using a chain of dependent class-scope fixtures."""  # fmt: skip
 
     def test_dependency_chain_initial(self, dependent_fixture):  # pylint: disable=redefined-outer-name
         """Test that the dependent fixture resolves the chain correctly."""
