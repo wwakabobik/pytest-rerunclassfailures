@@ -533,6 +533,27 @@ class RerunClassPlugin:  # pylint: disable=too-few-public-methods
                         terminalreporter._tw.line(str(rerun_test.longrepr))  # pylint: disable=W0212
 
 
+def _emit_config_warning(config: Config, message: str) -> None:
+    """
+    Emit a one-time informational message during ``pytest_configure``.
+
+    :param config: pytest config
+    :type config: pytest.Config
+    :param message: message to emit
+    :type message: str
+    :return: None
+    :rtype: None
+    """
+    if config.pluginmanager.is_blocked("warnings"):
+        # issue_config_time_warning is silently a no-op under -p no:warnings, and the
+        # terminal reporter isn't guaranteed registered yet at this point in configure,
+        # so fall back to a plain print - it needs no pytest subsystem to be ready and
+        # guarantees this is seen even with warnings disabled
+        print(f"\n{message}")
+    else:
+        config.issue_config_time_warning(pytest.PytestConfigWarning(message), stacklevel=2)
+
+
 def pytest_configure(config: Config) -> None:
     """
     Configure the plugin.
@@ -544,23 +565,27 @@ def pytest_configure(config: Config) -> None:
     """
     if config.getoption("--rerun-class-max") != 0:
         if config.pluginmanager.has_plugin("rerunfailures") and not config.getoption("--allow-rerunfailures"):
-            message = (
+            _emit_config_warning(
+                config,
                 "pytest-rerunclassfailures: pytest-rerunfailures is also active. Both plugins "
                 "hook pytest_runtest_protocol; a pytest-rerunfailures marker (or --reruns) on a "
                 "method inside a class this plugin reruns is silently superseded by the "
                 "class-level rerun and never applies on its own. Standalone (non-class) tests "
                 "are unaffected and cooperate normally with pytest-rerunfailures. Pass "
                 "--allow-rerunfailures to silence this message once you've confirmed that's "
-                "acceptable for your test suite."
+                "acceptable for your test suite.",
             )
-            if config.pluginmanager.is_blocked("warnings"):
-                # issue_config_time_warning is silently a no-op under -p no:warnings, and the
-                # terminal reporter isn't guaranteed registered yet at this point in configure,
-                # so fall back to a plain print - it needs no pytest subsystem to be ready and
-                # guarantees this is seen even with warnings disabled
-                print(f"\n{message}")
-            else:
-                config.issue_config_time_warning(pytest.PytestConfigWarning(message), stacklevel=2)
+        if config.pluginmanager.has_plugin("xdist") and config.getoption("dist", default="no") == "load":
+            _emit_config_warning(
+                config,
+                "pytest-rerunclassfailures: pytest-xdist is active with --dist=load (its "
+                "default when -n/--numprocesses is passed without --dist). This does not "
+                "guarantee that every test method of a class lands on the same worker, so a "
+                "class rerun triggered on one worker may not see every sibling test, and "
+                "reported results can differ from a non-distributed run. Use "
+                "--dist=loadscope or --dist=loadfile so every test in a class always runs "
+                "on the same worker.",
+            )
         # constructed (and validated) even for a negative value, so an out-of-range option
         # surfaces a clear usage error instead of being silently treated as "disabled"
         rerun_plugin = RerunClassPlugin(config)

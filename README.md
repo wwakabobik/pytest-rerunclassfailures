@@ -70,8 +70,14 @@ Plugin supports `pytest-xdist` plugin.
 It means that you can run tests in parallel and rerun failed classes in parallel as well.
 But please note that every class tests method should schedule to run in the same worker. 
 So the plugin can rerun the whole class in the same worker.
-To do so, you need to run your tests with `--dist=loadscope` option. 
-Otherwise, there's no guarantee that results will be predictable.
+To do so, you need to run your tests with `--dist=loadscope` (or `--dist=loadfile`) option. 
+Otherwise, there's no guarantee that results will be predictable - if a class's tests get
+scattered across workers, a rerun triggered on one worker may not see every sibling test.
+
+If `pytest-xdist` is active with `-n`/`--numprocesses` and no `--dist` was passed (xdist then
+defaults to `--dist=load`), the plugin prints a one-time message pointing this out, since it's an
+easy thing to miss - there's no flag to silence it, since there isn't a legitimate reason to run
+this plugin with `--dist=load`; just pass `--dist=loadscope` or `--dist=loadfile`.
 
 
 ## Known limitations

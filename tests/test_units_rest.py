@@ -271,17 +271,26 @@ def test_unit_remove_non_initial_attributes_ignores_callables_and_dunders(rerun_
     assert hasattr(_FakeTestClassWithMethod, "a_method")
 
 
-def _make_config_mock(rerun_class_max=1, has_rerunfailures=False, allow_rerunfailures=False, warnings_blocked=False):
+def _make_config_mock(  # pylint: disable=too-many-positional-arguments
+    rerun_class_max=1,
+    has_rerunfailures=False,
+    allow_rerunfailures=False,
+    warnings_blocked=False,
+    has_xdist=False,
+    dist_mode="no",
+):
     options = {
         "--rerun-class-max": rerun_class_max,
         "--rerun-delay": 0.5,
         "--rerun-show-only-last": False,
         "--hide-rerun-details": False,
         "--allow-rerunfailures": allow_rerunfailures,
+        "dist": dist_mode,
     }
+    plugins = {"rerunfailures": has_rerunfailures, "xdist": has_xdist}
     config = MagicMock()
-    config.getoption = MagicMock(side_effect=lambda name: options[name])
-    config.pluginmanager.has_plugin = MagicMock(return_value=has_rerunfailures)
+    config.getoption = MagicMock(side_effect=lambda name, default=None: options.get(name, default))
+    config.pluginmanager.has_plugin = MagicMock(side_effect=lambda name: plugins.get(name, False))
     config.pluginmanager.is_blocked = MagicMock(return_value=warnings_blocked)
     return config
 
@@ -328,6 +337,39 @@ def test_unit_pytest_configure_ignores_rerunfailures_check_when_disabled():
     pytest_configure(config)
 
     config.pluginmanager.register.assert_not_called()
+
+
+def test_unit_pytest_configure_warns_about_xdist_load_dist():
+    """Test that pytest_configure warns when xdist is active with --dist=load"""
+    config = _make_config_mock(has_xdist=True, dist_mode="load")
+
+    pytest_configure(config)
+
+    config.issue_config_time_warning.assert_called_once()
+    (warning,), _kwargs = config.issue_config_time_warning.call_args
+    assert "pytest-xdist is active with --dist=load" in str(warning)
+    config.pluginmanager.register.assert_called_once()
+
+
+@pytest.mark.parametrize("dist_mode", ["no", "loadscope", "loadfile"])
+def test_unit_pytest_configure_no_xdist_warning_for_safe_dist_modes(dist_mode):
+    """Test that no xdist warning is emitted when xdist isn't distributing by test load"""
+    config = _make_config_mock(has_xdist=True, dist_mode=dist_mode)
+
+    pytest_configure(config)
+
+    config.issue_config_time_warning.assert_not_called()
+    config.pluginmanager.register.assert_called_once()
+
+
+def test_unit_pytest_configure_no_xdist_warning_when_xdist_absent():
+    """Test that the xdist dist-mode check is skipped entirely when xdist isn't installed"""
+    config = _make_config_mock(has_xdist=False, dist_mode="load")
+
+    pytest_configure(config)
+
+    config.issue_config_time_warning.assert_not_called()
+    config.pluginmanager.register.assert_called_once()
 
 
 def test_unit_pytest_runtest_protocol_defers_non_class_items(rerun_class_plugin):  # pylint: disable=W0621
