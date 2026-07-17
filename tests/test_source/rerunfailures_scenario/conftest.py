@@ -1,5 +1,4 @@
-"""
-Register a minimal stand-in plugin under the name pytest-rerunfailures uses.
+"""Register a minimal stand-in plugin under the name pytest-rerunfailures uses.
 
 So the conflict-detection tests below don't need the real pytest-rerunfailures as a dependency.
 """

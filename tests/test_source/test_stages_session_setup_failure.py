@@ -1,5 +1,4 @@
-"""
-A session-scope fixture that always fails during setup.
+"""A session-scope fixture that always fails during setup.
 
 Regression test: see test_stages_module_setup_failure.py for the full rationale -
 session-scope fixtures must never be silently retried between class reruns.

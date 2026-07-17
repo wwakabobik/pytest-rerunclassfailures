@@ -1,5 +1,4 @@
-"""
-Bootstrap subprocess coverage measurement for the subprocess-spawned pytest runs.
+"""Bootstrap subprocess coverage measurement for the subprocess-spawned pytest runs.
 
 Used throughout this test suite (see conftest.py / test_arguments.py).
 

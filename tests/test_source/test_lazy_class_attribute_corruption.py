@@ -1,5 +1,4 @@
-"""
-Test that a lazily-created class attribute doesn't leak stale/mutated state across reruns.
+"""Test that a lazily-created class attribute doesn't leak stale/mutated state across reruns.
 
 Regression test: a class-scope fixture that lazily creates a shared object only if it
 doesn't already exist (``if not hasattr(request.cls, "user"): request.cls.user = ...``)

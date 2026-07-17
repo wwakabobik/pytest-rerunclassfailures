@@ -1,5 +1,4 @@
-"""
-A module-scope fixture that always fails during setup.
+"""A module-scope fixture that always fails during setup.
 
 Regression test: previously, `_remove_cached_results_from_failed_fixtures` cleared
 `cached_result` for ANY failed fixture regardless of scope, which (a) violated the
