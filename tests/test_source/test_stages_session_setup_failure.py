@@ -14,8 +14,7 @@ def session_setup():
 
 
 class TestFailInSessionSetup:  # pylint: disable=too-few-public-methods
-
-    """Check that a failing session-scope fixture never crashes the plugin."""  # fmt: skip
+    """Check that a failing session-scope fixture never crashes the plugin."""
 
     def test_after_session_setup(self):
         """Test should never run, the session fixture always fails."""

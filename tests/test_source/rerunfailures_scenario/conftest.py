@@ -5,8 +5,7 @@ So the conflict-detection tests below don't need the real pytest-rerunfailures a
 
 
 class _FakeRerunfailuresPlugin:  # pylint: disable=too-few-public-methods
-
-    """Placeholder standing in for the real pytest-rerunfailures plugin object."""  # fmt: skip
+    """Placeholder standing in for the real pytest-rerunfailures plugin object."""
 
 
 def pytest_configure(config):

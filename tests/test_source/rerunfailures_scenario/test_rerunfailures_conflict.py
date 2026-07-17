@@ -2,8 +2,7 @@
 
 
 class TestRerunfailuresConflict:  # pylint: disable=too-few-public-methods
-
-    """A trivial passing test class; the interesting behavior is in conftest.py + the CLI flag."""  # fmt: skip
+    """A trivial passing test class; the interesting behavior is in conftest.py + the CLI flag."""
 
     def test_placeholder(self):
         """Never actually reached when the conflict is correctly detected and raised."""

@@ -20,8 +20,7 @@ def module_setup(request):  # pylint: disable=unused-argument
 
 
 class TestFailInModuleSetup:  # pylint: disable=too-few-public-methods
-
-    """Check that a failing module-scope fixture never crashes the plugin."""  # fmt: skip
+    """Check that a failing module-scope fixture never crashes the plugin."""
 
     def test_after_module_setup(self):
         """Test should never run, the module fixture always fails."""
