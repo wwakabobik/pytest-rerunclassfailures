@@ -1,4 +1,4 @@
-"""This test checks that the plugin correctly handles failure at any stage of the test"""
+"""This test checks that the plugin correctly handles failure at any stage of the test."""
 
 
 def test_failure_stages_setup(run_default_tests):  # pylint: disable=W0613
@@ -18,9 +18,10 @@ def test_failure_stages_setup(run_default_tests):  # pylint: disable=W0613
 
 def test_failure_stages_class_setup_retries(run_default_tests):  # pylint: disable=W0613
     """
-    This test proves a class-scope fixture that fails during setup is genuinely
-    retried (its real FixtureDef state is reset, not just cached-and-crashing) on
-    the next rerun, rather than permanently erroring or crashing the plugin.
+    Prove a class-scope fixture that fails during setup is genuinely retried.
+
+    Its real FixtureDef state is reset, not just cached-and-crashing, on the next rerun,
+    rather than permanently erroring or crashing the plugin.
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function
@@ -33,10 +34,10 @@ def test_failure_stages_class_setup_retries(run_default_tests):  # pylint: disab
 
 def test_failure_stages_module_setup_never_retried(run_default_tests):  # pylint: disable=W0613
     """
-    Regression test: a module-scope fixture that fails during setup must consistently
-    error on every rerun attempt (its scope contract forbids retrying it), and must
-    never crash the plugin itself (see test_failure_stages_class_setup_retries for the
-    class-scope counterpart, where retrying IS correct).
+    Regression test: a module-scope fixture that fails during setup must consistently error on every rerun.
+
+    Its scope contract forbids retrying it, and it must never crash the plugin itself (see
+    test_failure_stages_class_setup_retries for the class-scope counterpart, where retrying IS correct).
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function
@@ -50,8 +51,9 @@ def test_failure_stages_module_setup_never_retried(run_default_tests):  # pylint
 
 def test_failure_stages_session_setup_never_retried(run_default_tests):  # pylint: disable=W0613
     """
-    Regression test: a session-scope fixture that fails during setup must consistently
-    error on every rerun attempt and never crash the plugin itself.
+    Regression test: a session-scope fixture that fails during setup must consistently error on every rerun.
+
+    It must never crash the plugin itself.
 
     :param run_default_tests: fixture to run pytest with the plugin and default arguments
     :type run_default_tests: function

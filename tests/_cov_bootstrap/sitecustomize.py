@@ -1,6 +1,7 @@
 """
-Bootstrap subprocess coverage measurement for the subprocess-spawned pytest runs used
-throughout this test suite (see conftest.py / test_arguments.py).
+Bootstrap subprocess coverage measurement for the subprocess-spawned pytest runs.
+
+Used throughout this test suite (see conftest.py / test_arguments.py).
 
 Newer coverage.py versions (7.11+) auto-install a startup .pth that reads
 COVERAGE_PROCESS_START and calls coverage.process_startup() on interpreter start.

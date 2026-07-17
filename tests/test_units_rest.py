@@ -1,4 +1,4 @@
-"""This module contains rest of the tests are not covered by the other test modules (mocked tests)"""
+"""Rest of the tests not covered by the other test modules (mocked, in-process unit tests)."""
 
 from unittest.mock import MagicMock, create_autospec
 
@@ -93,7 +93,7 @@ def test_unit_pytest_terminal_summary_with_tuple(rerun_class_plugin, mock_pytest
 
 
 def test_unit_pytest_terminal_summary_without_longrepr(rerun_class_plugin, mock_pytest_config):  # pylint: disable=W0621
-    """Test that a rerun report with no longrepr attribute at all is handled without error"""
+    """Test that a rerun report with no longrepr attribute at all is handled without error."""
     terminalreporter = create_autospec(TerminalReporter, instance=True)
     rerun_test = MagicMock(spec=["nodeid"])
     rerun_test.nodeid = "test_nodeid"
@@ -108,7 +108,7 @@ def test_unit_pytest_terminal_summary_without_longrepr(rerun_class_plugin, mock_
 def test_unit_pytest_terminal_summary_skips_falsy_tuple_lines(
     rerun_class_plugin, mock_pytest_config
 ):  # pylint: disable=W0621
-    """Test that a falsy entry within a tuple longrepr is skipped rather than printed"""
+    """Test that a falsy entry within a tuple longrepr is skipped rather than printed."""
     terminalreporter = create_autospec(TerminalReporter, instance=True)
     terminalreporter.stats = {"rerun": [MagicMock()]}
     terminalreporter._tw = MagicMock()  # pylint: disable=protected-access
@@ -125,7 +125,7 @@ def test_unit_pytest_terminal_summary_skips_falsy_tuple_lines(
 
 
 def test_unit_rerun_class_options_accepts_valid_values():
-    """Test that RerunClassOptions accepts and stores valid option values"""
+    """Test that RerunClassOptions accepts and stores valid option values."""
     options = RerunClassOptions(rerun_max=2, delay=1.5, only_last=True, hide_terminal_output=False)
 
     assert options.rerun_max == 2
@@ -136,7 +136,7 @@ def test_unit_rerun_class_options_accepts_valid_values():
 
 @pytest.mark.parametrize("field_name, value", [("rerun_max", -1), ("delay", -0.5)])
 def test_unit_rerun_class_options_rejects_negative_values(field_name, value):
-    """Test that RerunClassOptions rejects out-of-range (negative) values"""
+    """Test that RerunClassOptions rejects out-of-range (negative) values."""
     kwargs = {"rerun_max": 1, "delay": 0.5, "only_last": False, "hide_terminal_output": False}
     kwargs[field_name] = value
 
@@ -145,7 +145,7 @@ def test_unit_rerun_class_options_rejects_negative_values(field_name, value):
 
 
 def test_unit_plugin_init_rejects_invalid_options():
-    """Test that RerunClassPlugin.__init__ turns a pydantic ValidationError into a pytest.UsageError"""
+    """Test that RerunClassPlugin.__init__ turns a pydantic ValidationError into a pytest.UsageError."""
     config = MagicMock()
     config.getoption = MagicMock(side_effect=lambda x: -1 if x == "--rerun-class-max" else 0)
 
@@ -155,8 +155,9 @@ def test_unit_plugin_init_rejects_invalid_options():
 
 def _make_stacked_setupstate(entries):  # pylint: disable=protected-access
     """
-    Build a MagicMock item whose item.session._setupstate.stack behaves like the real
-    pytest SetupState.stack: an insertion-ordered dict of node -> (finalizers, exc).
+    Build a MagicMock item whose item.session._setupstate.stack behaves like the real pytest SetupState.stack.
+
+    An insertion-ordered dict of node -> (finalizers, exc).
 
     :param entries: ordered list of (node, finalizers) pairs, root-first
     :type entries: list
@@ -173,7 +174,7 @@ def _make_stacked_setupstate(entries):  # pylint: disable=protected-access
 def test_unit_teardown_class_and_below_pops_only_class_and_function(  # pylint: disable=W0621,protected-access
     rerun_class_plugin,
 ):
-    """Test that only class/function levels are popped and torn down, module/session are kept"""
+    """Test that only class/function levels are popped and torn down, module/session are kept."""
     session_fin, module_fin, class_fin, function_fin = MagicMock(), MagicMock(), MagicMock(), MagicMock()
     session_node, module_node, class_node, function_node = MagicMock(), MagicMock(), MagicMock(), MagicMock()
     item = _make_stacked_setupstate(
@@ -200,7 +201,7 @@ def test_unit_teardown_class_and_below_pops_only_class_and_function(  # pylint: 
 
 
 def test_unit_teardown_class_and_below_noop_when_already_at_target(rerun_class_plugin):  # pylint: disable=W0621
-    """Test that nothing is popped if the stack is already at (or below) the target length"""
+    """Test that nothing is popped if the stack is already at (or below) the target length."""
     session_fin, module_fin = MagicMock(), MagicMock()
     session_node, module_node = MagicMock(), MagicMock()
     item = _make_stacked_setupstate([(session_node, [session_fin]), (module_node, [module_fin])])
@@ -214,7 +215,7 @@ def test_unit_teardown_class_and_below_noop_when_already_at_target(rerun_class_p
 
 
 def test_unit_teardown_class_and_below_catches_finalizer_exception(rerun_class_plugin):  # pylint: disable=W0621
-    """Test that an exception raised by a finalizer is caught and remaining ones still run"""
+    """Test that an exception raised by a finalizer is caught and remaining ones still run."""
     session_fin = MagicMock()
     failing_fin = MagicMock(side_effect=AssertionError("boom"))
     other_fin = MagicMock()
@@ -238,7 +239,7 @@ def test_unit_teardown_class_and_below_catches_finalizer_exception(rerun_class_p
 
 
 def test_unit_remove_non_initial_attributes_removes_lazily_created_state(rerun_class_plugin):  # pylint: disable=W0621
-    """Test that an attribute created after the initial-state snapshot gets removed"""
+    """Test that an attribute created after the initial-state snapshot gets removed."""
 
     class _FakeTestClass:  # pylint: disable=too-few-public-methods
         legit_attr = "should-survive"
@@ -256,11 +257,11 @@ def test_unit_remove_non_initial_attributes_removes_lazily_created_state(rerun_c
 
 
 def test_unit_remove_non_initial_attributes_ignores_callables_and_dunders(rerun_class_plugin):  # pylint: disable=W0621
-    """Test that methods and dunder/pytestmark attributes are never touched"""
+    """Test that methods and dunder/pytestmark attributes are never touched."""
 
     class _FakeTestClassWithMethod:  # pylint: disable=too-few-public-methods
         def a_method(self):
-            """A regular method that must never be removed"""
+            """A regular method that must never be removed."""
 
     parent = MagicMock()
     parent.obj = _FakeTestClassWithMethod
@@ -296,7 +297,7 @@ def _make_config_mock(  # pylint: disable=too-many-positional-arguments
 
 
 def test_unit_pytest_configure_warns_about_rerunfailures_by_default():
-    """Test that pytest_configure warns (but still starts) alongside pytest-rerunfailures"""
+    """Test that pytest_configure warns (but still starts) alongside pytest-rerunfailures."""
     config = _make_config_mock(has_rerunfailures=True)
 
     pytest_configure(config)
@@ -310,7 +311,7 @@ def test_unit_pytest_configure_warns_about_rerunfailures_by_default():
 
 
 def test_unit_pytest_configure_prints_fallback_when_warnings_blocked(capsys):
-    """Test that pytest_configure falls back to a plain print when -p no:warnings is set"""
+    """Test that pytest_configure falls back to a plain print when -p no:warnings is set."""
     config = _make_config_mock(has_rerunfailures=True, warnings_blocked=True)
 
     pytest_configure(config)
@@ -321,7 +322,7 @@ def test_unit_pytest_configure_prints_fallback_when_warnings_blocked(capsys):
 
 
 def test_unit_pytest_configure_allows_rerunfailures_with_flag():
-    """Test that --allow-rerunfailures silences the warning and both plugins coexist"""
+    """Test that --allow-rerunfailures silences the warning and both plugins coexist."""
     config = _make_config_mock(has_rerunfailures=True, allow_rerunfailures=True)
 
     pytest_configure(config)
@@ -331,7 +332,7 @@ def test_unit_pytest_configure_allows_rerunfailures_with_flag():
 
 
 def test_unit_pytest_configure_ignores_rerunfailures_check_when_disabled():
-    """Test that the rerunfailures check is skipped entirely when this plugin is disabled"""
+    """Test that the rerunfailures check is skipped entirely when this plugin is disabled."""
     config = _make_config_mock(rerun_class_max=0, has_rerunfailures=True)
 
     pytest_configure(config)
@@ -340,7 +341,7 @@ def test_unit_pytest_configure_ignores_rerunfailures_check_when_disabled():
 
 
 def test_unit_pytest_configure_warns_about_xdist_load_dist():
-    """Test that pytest_configure warns when xdist is active with --dist=load"""
+    """Test that pytest_configure warns when xdist is active with --dist=load."""
     config = _make_config_mock(has_xdist=True, dist_mode="load")
 
     pytest_configure(config)
@@ -353,7 +354,7 @@ def test_unit_pytest_configure_warns_about_xdist_load_dist():
 
 @pytest.mark.parametrize("dist_mode", ["no", "loadscope", "loadfile"])
 def test_unit_pytest_configure_no_xdist_warning_for_safe_dist_modes(dist_mode):
-    """Test that no xdist warning is emitted when xdist isn't distributing by test load"""
+    """Test that no xdist warning is emitted when xdist isn't distributing by test load."""
     config = _make_config_mock(has_xdist=True, dist_mode=dist_mode)
 
     pytest_configure(config)
@@ -363,7 +364,7 @@ def test_unit_pytest_configure_no_xdist_warning_for_safe_dist_modes(dist_mode):
 
 
 def test_unit_pytest_configure_no_xdist_warning_when_xdist_absent():
-    """Test that the xdist dist-mode check is skipped entirely when xdist isn't installed"""
+    """Test that the xdist dist-mode check is skipped entirely when xdist isn't installed."""
     config = _make_config_mock(has_xdist=False, dist_mode="load")
 
     pytest_configure(config)
@@ -373,7 +374,7 @@ def test_unit_pytest_configure_no_xdist_warning_when_xdist_absent():
 
 
 def test_unit_pytest_runtest_protocol_defers_non_class_items(rerun_class_plugin):  # pylint: disable=W0621
-    """Test that non-class items are deferred (None) rather than handled directly"""
+    """Test that non-class items are deferred (None) rather than handled directly."""
     item = MagicMock()
     item.cls = None
 
@@ -384,8 +385,9 @@ def test_unit_pytest_runtest_protocol_defers_non_class_items(rerun_class_plugin)
 
 def test_unit_recreate_test_class_drops_memoized_instance_and_obj(rerun_class_plugin):  # pylint: disable=W0621
     """
-    Test that Function._instance/_obj are dropped for siblings that have them, so the
-    next run gets a genuinely fresh bound instance instead of reusing the same one
+    Test that Function._instance/_obj are dropped for siblings that have them.
+
+    So the next run gets a genuinely fresh bound instance instead of reusing the same one
     (and any instance attributes it accumulated) across reruns.
     """
     test_class_mock = create_autospec(pytest.Class, instance=True)

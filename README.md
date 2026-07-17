@@ -81,6 +81,7 @@ this plugin with `--dist=load`; just pass `--dist=loadscope` or `--dist=loadfile
 
 
 ## Known limitations
+
 - Function- and class-scope fixtures used by the rerun class are genuinely torn down (their real finalizers run) and re-invoked between reruns. Module/package/session-scope fixtures are deliberately left untouched, since they may be shared with content outside the rerun class/cycle.
 - The per-test bound class instance (`Function._instance`/`_obj`) is also dropped between reruns, so a class attribute set as a side effect of a function-scope fixture whose return value is consumed as a test parameter (not stored on `self`) no longer leaks stale state from a previous attempt either.
 - Due to `pytest-xdist` plugin limitations, report output will be thrown only when all tests in class are executed. This means that you will not see the output of the failed test until all tests in the class are rerun. Unfortunately, `pytest-xdist` plugin allows reporting results for only scheduled tests in scheduled order. Due to that, tests in class will be grouped by test, but not by rerun, as in regular run.

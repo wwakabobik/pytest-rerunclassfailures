@@ -224,8 +224,7 @@ def plugin_negative_arguments(request: FixtureRequest, run_tests_with_plugin) ->
 
 def test_arguments_negative_values_rejected(plugin_negative_arguments):  # pylint: disable=W0621
     """
-    Test that the plugin rejects negative option values with a clear usage error
-    instead of silently misbehaving.
+    Test that the plugin rejects negative option values with a clear usage error instead of silently misbehaving.
 
     :param plugin_negative_arguments: fixture to run pytest with out-of-range option values
     :type plugin_negative_arguments: tuple
@@ -238,10 +237,11 @@ def test_arguments_negative_values_rejected(plugin_negative_arguments):  # pylin
 
 def test_arguments_rerunfailures_conflict_detected(run_tests_with_plugin):  # pylint: disable=W0621
     """
-    Test that the plugin warns (but still runs the suite) when pytest-rerunfailures is
-    also active, and that --allow-rerunfailures silences the warning. Uses a conftest.py
-    that registers a stand-in plugin under the same name pytest-rerunfailures registers
-    as, so this doesn't require the real pytest-rerunfailures as a test dependency.
+    Test that the plugin warns (but still runs the suite) when pytest-rerunfailures is also active.
+
+    Also verifies that --allow-rerunfailures silences the warning. Uses a conftest.py that registers a
+    stand-in plugin under the same name pytest-rerunfailures registers as, so this doesn't require the
+    real pytest-rerunfailures as a test dependency.
 
     :param run_tests_with_plugin: fixture to run pytest with the plugin
     :type run_tests_with_plugin: function
